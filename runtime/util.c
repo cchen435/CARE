@@ -14,8 +14,8 @@
 #include <mhash.h>
 #include <stdio.h>
 #include <string.h>
-#define __USE_GNU
-#define __USE_XOPEN_EXTENDED
+//#define __USE_GNU
+//#define __USE_XOPEN_EXTENDED
 #include <signal.h>
 #include <ucontext.h>
 #include <udis86.h>
@@ -56,14 +56,14 @@ static int care_until_unwind(int steps) {
   unw_getcontext(&unw_ctx);
   unw_init_local(&cursor, &unw_ctx);
   while (unw_is_signal_frame(&cursor)) {
-    unw_step(&currsor);
+    unw_step(&cursor);
   }
 #if DEBUG
   unw_get_proc_name(&cursor, proc, 128, &off);
   unw_get_reg(&cursor, UNW_REG_IP, &pc);
   fprintf(stderr, "crash point: function --> %s, PC --> %llx\n", proc, pc);
 #endif
-  while (steps--) unw_step(&currsor);
+  while (steps--) unw_step(&cursor);
 #if DEBUG
   unw_get_proc_name(&cursor, proc, 128, &off);
   unw_get_reg(&cursor, UNW_REG_IP, &pc);
@@ -84,7 +84,7 @@ void care_util_rollback(unw_cursor_t *cursor) {
   unw_get_reg(cursor, UNW_REG_IP, &pc);
   while (pc--) {
     care_ud_disasm_instruction(&obj, (uint8_t *)pc);
-    if (UD_Icall == ud_insn_mnemonic(obj)) break;
+    if (UD_Icall == ud_insn_mnemonic(&obj)) break;
   }
   uwn_set_reg(cursor, UNW_REG_IP, pc);
 }
@@ -211,7 +211,7 @@ void care_util_finish(care_context_t *context) {
  * memory location. (note: hypothesis, for SIGSEGV, it should be register only,
  * and  for SIGFPE, it could be either register or memory location )
  */
-int care_util_diagnose(int signo, care_context_t *context,
+care_method_t care_util_diagnose(int signo, care_context_t *context,
                        care_target_t *target) {
   ud_t ud_obj;       // the udis86 object
   ud_type_t ud_reg;  // the register naming in udis namespace

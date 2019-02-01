@@ -1,6 +1,8 @@
 
+#include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <istream>
 
@@ -97,8 +99,9 @@ static std::string getFunctionTyStr(const pb::FunctionTy *FuncTy) {
 }
 
 static bool isBaseTy(llvm::Type *Ty) {
-  return Ty->isSingleValueType();
 #if 0
+  return Ty->isSingleValueType();
+#else
   if (Ty->isDoubleTy() || Ty->isFloatingPointTy() || Ty->isIntegerTy() ||
       Ty->isHalfTy() || Ty->isVoidTy())
     return true;
@@ -113,11 +116,16 @@ static bool isPointerTy(llvm::Type *Ty) { return Ty->isPointerTy(); }
  */
 static pb::Type *createPBBaseTy(llvm::Type *ty) {
   pb::Type *retval = new pb::Type();
-  assert(ty->isFloatingPointTy() || ty->isIntegerTy() && "Unhandled Type\n");
   retval->set_id((pb::TypeID)ty->getTypeID());
   if (ty->isIntegerTy()) {
     retval->set_width(ty->getIntegerBitWidth());
   }
+#if 1
+  llvm::dbgs() << "[createPBBaseTy] create type for : " << *ty
+               << "\n\tSingleValueType: " << ty->isSingleValueType()
+               << "\n\treturn: " << retval->id() << "(" << getTypeStr(retval)
+               << ")\n";
+#endif
   return retval;
 }
 
@@ -135,6 +143,12 @@ pb::Type *createPBPointerTy(llvm::PointerType *ty) {
   else
     pointee = createPBBaseTy(sub);
   retval->set_allocated_pointeety(pointee);
+#if 1
+  llvm::dbgs() << "[createPBPointerTy] create type for : " << *ty
+               << "\n\tSingleValueType: " << ty->isSingleValueType()
+               << "\n\treturn: " << retval->id() << "(" << getTypeStr(retval)
+               << ")\n";
+#endif
   return retval;
 }
 
@@ -152,6 +166,12 @@ pb::Type *createPBType(llvm::Type *Ty) {
     llvm::errs() << "Unhandled/Unexpected Type: " << *Ty;
     exit(EXIT_FAILURE);
   }
+#if 1
+  llvm::dbgs() << "[createPBType] create type for : " << *Ty
+               << "\n\tSingleValueType: " << Ty->isSingleValueType()
+               << "\n\treturn: " << retval->id() << "(" << getTypeStr(retval)
+               << ")\n\n\n";
+#endif
   return retval;
 }
 
@@ -205,8 +225,18 @@ void care_tb_print_record(const pb::Record *record) {
     if (i < n_params - 1) params.append(", ");
   }
 
-  std::cout << "key: " << key << "\t FuncTy: " << FuncTyStr
-            << "\t Params: " << params << "\n";
+#if 0
+  std::cout << "key(len = " << key.size() << "): ";
+  for (unsigned i = 0; i < key.size(); i++) {
+    uint8_t high = key.c_str()[i] >> 4;
+    uint8_t low = key[i] & 15;
+    std::cout << std::setw(1) << std::hex << std::uppercase << high << low;
+  }
+  std::cout << "\tFuncTy: " << FuncTyStr << "\tParams: " << params << "\n";
+#else
+  std::cout << "key: " << key << "\tFuncTy: " << FuncTyStr
+            << "\tParams: " << params << "\n";
+#endif
 }
 
 void care_tb_print(pb::Table *table) {

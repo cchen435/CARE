@@ -6,8 +6,12 @@
 #include <libdwarf.h>
 #include <mhash.h>
 #include <stdio.h>
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
+#ifndef __USE_XOPEN_EXTENDED
 #define __USE_XOPEN_EXTENDED
+#endif
 #if __APPLE__
 #define _XOPEN_SOURCE
 #endif

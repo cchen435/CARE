@@ -1,154 +1,126 @@
-; ModuleID = 'smooth.ll'
-target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-macosx10.14.0"
+; ModuleID = './smooth.ll'
+target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-linux-gnu"
 
-; Function Attrs: norecurse nounwind ssp uwtable
-define i32 @smooth(i32* nocapture readonly %igrid, i32* nocapture readonly %mtheta, i32* nocapture readnone %itran, double* nocapture readnone %phism, double* nocapture %phitmp, double* nocapture readnone %phi, i32 %mpsi) #0 !dbg !8 {
+; Function Attrs: nounwind uwtable
+define i32 @smooth(i32* %igrid, i32* %mtheta, i32* %itran, double* %phism, double* %phitmp, double* %phi, i32 %mpsi) #0 !dbg !7 {
 entry:
-  %cmp18 = icmp sgt i32 %mpsi, 1
-  br i1 %cmp18, label %for.body, label %for.cond.cleanup
+  call void @llvm.dbg.value(metadata i32* %igrid, i64 0, metadata !18, metadata !27), !dbg !28
+  call void @llvm.dbg.value(metadata i32* %mtheta, i64 0, metadata !16, metadata !27), !dbg !29
+  call void @llvm.dbg.value(metadata double* %phitmp, i64 0, metadata !15, metadata !27), !dbg !30
+  br label %for.cond
 
-for.cond.cleanup:                                 ; preds = %for.body, %entry
-  ret i32 0
+for.cond:                                         ; preds = %for.body, %entry
+  %i.0 = phi i32 [ 1, %entry ], [ %inc, %for.body ]
+  call void @llvm.dbg.value(metadata i32 %i.0, i64 0, metadata !17, metadata !27), !dbg !31
+  %cmp = icmp slt i32 %i.0, %mpsi
+  br i1 %cmp, label %for.body, label %for.end
 
-for.body:                                         ; preds = %for.body, %entry
-  %indvars.iv = phi i64 [ %indvars.iv.next, %for.body ], [ 1, %entry ]
-  %arrayidx = getelementptr inbounds i32, i32* %igrid, i64 %indvars.iv
-  %0 = load i32, i32* %arrayidx, align 4, !dbg !21, !tbaa !22
-  %arrayidx2 = getelementptr inbounds i32, i32* %mtheta, i64 %indvars.iv
-  %1 = load i32, i32* %arrayidx2, align 4, !dbg !26, !tbaa !22
-  %add = add nsw i32 %1, %0, !dbg !26
-  %mul = shl i32 %add, 1
-  %sub = add nsw i32 %mul, -1
+for.body:                                         ; preds = %for.cond
+  %idxprom = sext i32 %i.0 to i64
+  %arrayidx = getelementptr inbounds i32, i32* %igrid, i64 %idxprom
+  %0 = load i32, i32* %arrayidx, align 4, !dbg !32
+  %arrayidx2 = getelementptr inbounds i32, i32* %mtheta, i64 %idxprom
+  %1 = load i32, i32* %arrayidx2, align 4, !dbg !33
+  %add = add nsw i32 %0, %1, !dbg !33
+  %mul = mul nsw i32 %add, 2
+  %sub = sub nsw i32 %mul, 1
   %idxprom3 = sext i32 %sub to i64
   %arrayidx4 = getelementptr inbounds double, double* %phitmp, i64 %idxprom3
-  %2 = bitcast double* %arrayidx4 to i64*
-  %3 = load i64, i64* %2, align 8, !dbg !27, !tbaa !28
-  %mul7 = shl i32 %0, 1, !dbg !21
-  %sub8 = add nsw i32 %mul7, -1
+  %2 = load double, double* %arrayidx4, align 8, !dbg !34
+  %mul7 = mul nsw i32 %0, 2, !dbg !32
+  %sub8 = sub nsw i32 %mul7, 1
   %idxprom9 = sext i32 %sub8 to i64
   %arrayidx10 = getelementptr inbounds double, double* %phitmp, i64 %idxprom9
-  %4 = bitcast double* %arrayidx10 to i64*
-  store i64 %3, i64* %4, align 8, !dbg !30, !tbaa !28
-  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
-  %lftr.wideiv = trunc i64 %indvars.iv.next to i32
-  %exitcond = icmp eq i32 %lftr.wideiv, %mpsi
-  br i1 %exitcond, label %for.cond.cleanup, label %for.body
+  store double %2, double* %arrayidx10, align 8, !dbg !35
+  %inc = add nsw i32 %i.0, 1
+  br label %for.cond
+
+for.end:                                          ; preds = %for.cond
+  ret i32 0
 }
 
-; Function Attrs: nounwind ssp uwtable
-define i32 @main(i32 %argc, i8** nocapture readonly %argv) #1 !dbg !15 {
+; Function Attrs: nounwind uwtable
+define i32 @main(i32 %argc, i8** %argv) #0 !dbg !19 {
 entry:
+  call void @llvm.dbg.value(metadata i8** %argv, i64 0, metadata !26, metadata !27), !dbg !36
   %arrayidx = getelementptr inbounds i8*, i8** %argv, i64 1
-  %0 = load i8*, i8** %arrayidx, align 8, !dbg !31, !tbaa !32
-  %call = tail call i32 @atoi(i8* %0), !dbg !31
+  %0 = load i8*, i8** %arrayidx, align 8, !dbg !37
+  %call = call i32 @atoi(i8* %0) #4
   %conv = sext i32 %call to i64
-  %mul = shl nsw i64 %conv, 2
-  %call1 = tail call i8* @malloc(i64 %mul)
+  %mul = mul i64 4, %conv
+  %call1 = call noalias i8* @malloc(i64 %mul) #5
   %1 = bitcast i8* %call1 to i32*
-  %call4 = tail call i8* @malloc(i64 %mul)
+  %call4 = call noalias i8* @malloc(i64 %mul) #5
   %2 = bitcast i8* %call4 to i32*
-  %cmp79 = icmp sgt i32 %call, 0
-  br i1 %cmp79, label %for.body, label %for.end.thread
-
-for.end.thread:                                   ; preds = %entry
-  %mul1685 = shl nsw i64 %conv, 3
-  %call2086 = tail call i8* @malloc(i64 %mul1685)
-  %3 = bitcast i8* %call2086 to double*
-  br label %for.end42
-
-for.body:                                         ; preds = %for.body, %entry
-  %indvars.iv81 = phi i64 [ %indvars.iv.next82, %for.body ], [ 0, %entry ]
-  %call9 = tail call i32 @rand() #5
-  %rem = srem i32 %call9, %call
-  %arrayidx12 = getelementptr inbounds i32, i32* %2, i64 %indvars.iv81
-  store i32 %rem, i32* %arrayidx12, align 4, !dbg !34, !tbaa !22
-  %arrayidx14 = getelementptr inbounds i32, i32* %1, i64 %indvars.iv81
-  store i32 %rem, i32* %arrayidx14, align 4, !dbg !35, !tbaa !22
-  %indvars.iv.next82 = add nuw nsw i64 %indvars.iv81, 1
-  %lftr.wideiv83 = trunc i64 %indvars.iv.next82 to i32
-  %exitcond84 = icmp eq i32 %lftr.wideiv83, %call
-  br i1 %exitcond84, label %for.end, label %for.body
-
-for.end:                                          ; preds = %for.body
-  %mul16 = shl nsw i64 %conv, 3
-  %call20 = tail call i8* @malloc(i64 %mul16)
-  %4 = bitcast i8* %call20 to double*
-  %cmp2577 = icmp sgt i32 %call, 0
-  br i1 %cmp2577, label %for.body27, label %for.end42
-
-for.body27:                                       ; preds = %for.body27, %for.end
-  %indvars.iv = phi i64 [ %indvars.iv.next, %for.body27 ], [ 0, %for.end ]
-  %call28 = tail call i32 @rand() #5
-  %call32 = tail call i32 @rand() #5
-  %conv33 = sitofp i32 %call32 to double
-  %arrayidx35 = getelementptr inbounds double, double* %4, i64 %indvars.iv
-  store double %conv33, double* %arrayidx35, align 8, !dbg !36, !tbaa !28
-  %call36 = tail call i32 @rand() #5
-  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
-  %lftr.wideiv = trunc i64 %indvars.iv.next to i32
-  %exitcond = icmp eq i32 %lftr.wideiv, %call
-  br i1 %exitcond, label %for.end42, label %for.body27
-
-for.end42:                                        ; preds = %for.body27, %for.end, %for.end.thread
-  %5 = phi double* [ %3, %for.end.thread ], [ %4, %for.end ], [ %4, %for.body27 ]
-  %call43 = tail call i32 @smooth(i32* %1, i32* %2, i32* undef, double* undef, double* %5, double* undef, i32 %call)
+  %call7 = call noalias i8* @malloc(i64 %mul) #5
+  %3 = bitcast i8* %call7 to i32*
+  %mul9 = mul i64 8, %conv
+  %call10 = call noalias i8* @malloc(i64 %mul9) #5
+  %4 = bitcast i8* %call10 to double*
+  %call13 = call noalias i8* @malloc(i64 %mul9) #5
+  %5 = bitcast i8* %call13 to double*
+  %call16 = call noalias i8* @malloc(i64 %mul9) #5
+  %6 = bitcast i8* %call16 to double*
+  %call17 = call i32 @smooth(i32* %1, i32* %2, i32* %3, double* %4, double* %5, double* %6, i32 %call)
   ret i32 0
 }
 
 ; Function Attrs: nounwind readonly
-declare i32 @atoi(i8* nocapture) #2
+declare i32 @atoi(i8*) #1
 
 ; Function Attrs: nounwind
-declare noalias i8* @malloc(i64) #3
+declare noalias i8* @malloc(i64) #2
 
-declare i32 @rand() #4
+; Function Attrs: nounwind readnone
+declare void @llvm.dbg.value(metadata, i64, metadata, metadata) #3
 
-attributes #0 = { norecurse nounwind ssp uwtable "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="core2" "target-features"="+cx16,+fxsr,+mmx,+sse,+sse2,+sse3,+ssse3" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #1 = { nounwind ssp uwtable "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="core2" "target-features"="+cx16,+fxsr,+mmx,+sse,+sse2,+sse3,+ssse3" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #2 = { nounwind readonly "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="core2" "target-features"="+cx16,+fxsr,+mmx,+sse,+sse2,+sse3,+ssse3" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #3 = { nounwind "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="core2" "target-features"="+cx16,+fxsr,+mmx,+sse,+sse2,+sse3,+ssse3" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #4 = { "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="core2" "target-features"="+cx16,+fxsr,+mmx,+sse,+sse2,+sse3,+ssse3" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #0 = { nounwind uwtable "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #1 = { nounwind readonly "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #2 = { nounwind "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #3 = { nounwind readnone }
+attributes #4 = { nounwind readonly }
 attributes #5 = { nounwind }
 
-!llvm.module.flags = !{!0, !1, !2}
-!llvm.ident = !{!3}
-!llvm.dbg.cu = !{!4}
+!llvm.ident = !{!0}
+!llvm.module.flags = !{!1, !2}
+!llvm.dbg.cu = !{!3}
 
-!0 = !{i32 1, !"PIC Level", i32 2}
+!0 = !{!"clang version 3.8.0 (tags/RELEASE_380/final)"}
 !1 = !{i32 2, !"Dwarf Version", i32 4}
 !2 = !{i32 2, !"Debug Info Version", i32 3}
-!3 = !{!"clang version 3.8.0 (tags/RELEASE_380/final)"}
-!4 = distinct !DICompileUnit(language: DW_LANG_C, file: !5, producer: "CARE", isOptimized: false, runtimeVersion: 0, emissionKind: 1, enums: !6, subprograms: !7)
-!5 = !DIFile(filename: "smooth.ll", directory: ".")
-!6 = !{}
-!7 = !{!8, !15}
-!8 = distinct !DISubprogram(name: "smooth", linkageName: "smooth", scope: !5, file: !5, line: 1, type: !9, isLocal: false, isDefinition: true, scopeLine: 1, flags: DIFlagPrototyped, isOptimized: false, variables: !6)
-!9 = !DISubroutineType(types: !10)
-!10 = !{!11, !12, !12, !12, !13, !13, !13, !11}
-!11 = !DIBasicType(name: "int", size: 32, align: 32, encoding: DW_ATE_signed)
-!12 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !11, size: 64, align: 64)
-!13 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !14, size: 64, align: 64)
-!14 = !DIBasicType(name: "double", size: 64, align: 64, encoding: DW_ATE_float)
-!15 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !5, file: !5, line: 6, type: !16, isLocal: false, isDefinition: true, scopeLine: 6, flags: DIFlagPrototyped, isOptimized: false, variables: !6)
-!16 = !DISubroutineType(types: !17)
-!17 = !{!11, !11, !18}
-!18 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !19, size: 64, align: 64)
-!19 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !20, size: 64, align: 64)
-!20 = !DIBasicType(name: "char", size: 8, align: 8, encoding: DW_ATE_signed_char)
-!21 = !DILocation(line: 2, column: 2, scope: !8)
-!22 = !{!23, !23, i64 0}
-!23 = !{!"int", !24, i64 0}
-!24 = !{!"omnipotent char", !25, i64 0}
-!25 = !{!"Simple C/C++ TBAA"}
-!26 = !DILocation(line: 3, column: 3, scope: !8)
-!27 = !DILocation(line: 4, column: 4, scope: !8)
-!28 = !{!29, !29, i64 0}
-!29 = !{!"double", !24, i64 0}
-!30 = !DILocation(line: 5, column: 5, scope: !8)
-!31 = !DILocation(line: 7, column: 7, scope: !15)
-!32 = !{!33, !33, i64 0}
-!33 = !{!"any pointer", !24, i64 0}
-!34 = !DILocation(line: 8, column: 8, scope: !15)
-!35 = !DILocation(line: 9, column: 9, scope: !15)
-!36 = !DILocation(line: 10, column: 10, scope: !15)
+!3 = distinct !DICompileUnit(language: DW_LANG_C, file: !4, producer: "CARE", isOptimized: false, runtimeVersion: 0, emissionKind: 1, enums: !5, subprograms: !6)
+!4 = !DIFile(filename: "./smooth.ll", directory: ".")
+!5 = !{}
+!6 = !{!7, !19}
+!7 = distinct !DISubprogram(name: "smooth", linkageName: "smooth", scope: !4, file: !4, line: 4160662529, type: !8, isLocal: false, isDefinition: true, scopeLine: 22068, flags: DIFlagPrototyped, isOptimized: false, variables: !14)
+!8 = !DISubroutineType(types: !9)
+!9 = !{!10, !11, !11, !11, !12, !12, !12, !10}
+!10 = !DIBasicType(name: "int", size: 32, align: 32, encoding: DW_ATE_signed)
+!11 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !10, size: 64, align: 64)
+!12 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !13, size: 64, align: 64)
+!13 = !DIBasicType(name: "double", size: 64, align: 64, encoding: DW_ATE_float)
+!14 = !{!15, !16, !17, !18}
+!15 = !DILocalVariable(name: "phitmp", arg: 5, scope: !7, file: !4, line: 4160662534, type: !12)
+!16 = !DILocalVariable(name: "mtheta", arg: 2, scope: !7, file: !4, line: 4160662535, type: !11)
+!17 = !DILocalVariable(name: "i.0", scope: !7, file: !4, line: 4160662536, type: !10)
+!18 = !DILocalVariable(name: "igrid", arg: 1, scope: !7, file: !4, line: 4160662537, type: !11)
+!19 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !4, file: !4, line: 4160662538, type: !20, isLocal: false, isDefinition: true, scopeLine: 22077, flags: DIFlagPrototyped, isOptimized: false, variables: !25)
+!20 = !DISubroutineType(types: !21)
+!21 = !{!10, !10, !22}
+!22 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !23, size: 64, align: 64)
+!23 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !24, size: 64, align: 64)
+!24 = !DIBasicType(name: "char", size: 8, align: 8, encoding: DW_ATE_signed_char)
+!25 = !{!26}
+!26 = !DILocalVariable(name: "argv", arg: 2, scope: !19, file: !4, line: 4160662540, type: !22)
+!27 = !DIExpression()
+!28 = !DILocation(line: 4160662537, column: 22076, scope: !7)
+!29 = !DILocation(line: 4160662535, column: 22074, scope: !7)
+!30 = !DILocation(line: 4160662534, column: 22073, scope: !7)
+!31 = !DILocation(line: 4160662536, column: 22075, scope: !7)
+!32 = !DILocation(line: 4160662530, column: 22069, scope: !7)
+!33 = !DILocation(line: 4160662531, column: 22070, scope: !7)
+!34 = !DILocation(line: 4160662532, column: 22071, scope: !7)
+!35 = !DILocation(line: 4160662533, column: 22072, scope: !7)
+!36 = !DILocation(line: 4160662540, column: 22079, scope: !19)
+!37 = !DILocation(line: 4160662539, column: 22078, scope: !19)

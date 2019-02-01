@@ -9,6 +9,12 @@
 
 #include "Care.h"
 
+#define RTB 1
+
+#if RTB
+#include "tb.h"
+#endif
+
 using namespace llvm;
 
 bool CarePass::isMemAccInst(Instruction *Insn) {
@@ -42,8 +48,28 @@ void CarePass::initialize(Module &M) {
   CareM->setDataLayout(M.getDataLayout());
 }
 
+std::string CarePass::getKey(DebugLoc loc) {
+  MHASH mhd = mhash_init(MHASH_MD5);
+  assert(mhd != MHASH_FAILED);
+
+  int lineno = loc.getLine();
+  int colno = loc.getCol();
+  auto scope = dyn_cast<DIScope>(loc.getScope());
+  std::string str = scope->getFilename();
+  str += "/" + std::to_string(lineno) + "/" + std::to_string(colno);
+
+  char key[16];
+  mhash(mhd, str.c_str(), str.size());
+  mhash_deinit(mhd, key);
+  return std::string(key);
+}
+
 bool CarePass::runOnModule(Module &M) {
   initialize(M);
+
+#if RTB
+  pb::Table *rtb = care_tb_create();
+#endif
 
   Module::FunctionListType &funcs = M.getFunctionList();
   for (Module::FunctionListType::iterator it = funcs.begin(), end = funcs.end();
@@ -60,8 +86,16 @@ bool CarePass::runOnModule(Module &M) {
     if (!hasDebugInfo) DIFunc = DbgInfoBuilder->createDIFunction(F);
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
       if (!isMemAccInst(&*I)) continue;
-      auto Params = buildRecoveryKernel(&*I);
-      Variables.insert(Params.begin(), Params.end());
+
+      Function *kernel;
+      std::set<Value *> params;
+      std::tie(kernel, params) = buildRecoveryKernel(&*I);
+      Variables.insert(params.begin(), params.end());
+
+      dbgs() << "created a recovery kernel: "
+             << "\n\tname: " << kernel->getName()
+             << "\n\tFunctionType: " << *kernel->getFunctionType() << "\n";
+
       DebugLoc loc;
       // get the debug info for the memory access instruction
       // create one if does not exists
@@ -69,6 +103,15 @@ bool CarePass::runOnModule(Module &M) {
         loc = I->getDebugLoc();
       else
         loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
+
+#if RTB
+      // build the recovery kernel table
+      std::string key = getKey(loc);
+      std::vector<std::string> pnames;
+      for (auto it = params.begin(); it != params.end(); it++)
+        pnames.push_back(getOrCreateValueName(*it));
+      care_tb_add_record(rtb, key, kernel, pnames);
+#endif
 
       // promote the debug data to all of its binary users
       // since in x86 architecture, the binary operation could
@@ -78,29 +121,45 @@ bool CarePass::runOnModule(Module &M) {
     }
 
     if (!hasDebugInfo) {
-      for (auto it = Variables.begin(); it != Variables.end(); it++) {
-        // DbgInfoBuilder->createDbgValue(*it, DIFunc);
+      for (auto it = Variables.begin(); it != Variables.end(); it++)
         DbgInfoBuilder->createDIVariable(*it, DIFunc);
-      }
     }
   }
 
   if (!hasDebugInfo) DbgInfoBuilder->finalize();
 
-  M.dump();
-
-  // writing LLVM IR to .bc file
-  std::string FileName = "libCARE" + M.getName().split('.').first.str() + ".bc";
+  // save CareM to .bc file
+  std::string program = M.getName().ltrim("./").split('.').first.str();
+  std::string FileName = "libCARE" + program + ".bc";
   std::error_code EC;
   DEBUG_WITH_TYPE("info",
                   dbgs() << "Writing CareM module to " << FileName << "\n");
   llvm::raw_fd_ostream OS(FileName, EC, llvm::sys::fs::F_None);
   WriteBitcodeToFile(CareM, OS);
   OS.flush();
+
+#if RTB
+  // save recovery table
+  FileName = program + ".tb";
+  care_tb_save(FileName, rtb);
+
+  DEBUG_WITH_TYPE("rtb", {
+    dbgs() << "Recovery Table (" << FileName << "): \n";
+    care_tb_print(rtb);
+    pb::Table *tb = care_tb_load((char *)FileName.c_str());
+    care_tb_print(tb);
+    care_tb_release(tb);
+  });
+
+  care_tb_release(rtb);
+
+#endif
+
   return true;
 }
 
-std::set<Value *> CarePass::buildRecoveryKernel(Instruction *Insn) {
+std::pair<Function *, std::set<Value *>> CarePass::buildRecoveryKernel(
+    Instruction *Insn) {
   std::vector<Value *> Stmts;
   std::set<Value *> Params;
   DEBUG_WITH_TYPE("info",
@@ -108,8 +167,8 @@ std::set<Value *> CarePass::buildRecoveryKernel(Instruction *Insn) {
 
   Type *RetTy = getParamsAndStmts(Insn, Params, Stmts);
 
-  createFunction(RetTy, Params, Stmts);
-  return Params;
+  Function *RK = createFunction(RetTy, Params, Stmts);
+  return std::make_pair(RK, Params);
 }
 
 Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
@@ -162,8 +221,8 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
   return Addr->getType();
 }
 
-void CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
-                              std::vector<Value *> Stmts) {
+Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
+                                   std::vector<Value *> Stmts) {
   DEBUG_WITH_TYPE("info", dbgs() << "Create Recovery Kernel Function\n");
 
   // a map from value in program module to the value in Care Module
@@ -179,8 +238,8 @@ void CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
 
   DEBUG_WITH_TYPE("info", dbgs() << "Init arguments and VMap with Params\n");
 
-  // make sure we did the thing correctly, the number of Params is equal to the
-  // number of arguments
+  // make sure we did the thing correctly, the number of Params is equal to
+  // the number of arguments
   assert(Params.size() == RK->getArgumentList().size());
 
   // set the argument name based on related parameter name
@@ -189,7 +248,7 @@ void CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
   llvm::Function::arg_iterator ait;
   for (ait = RK->arg_begin(), pit = Params.begin(); ait != RK->arg_end();
        ait++, pit++) {
-    ait->setName(getOrCreateName(*pit));
+    ait->setName(getOrCreateValueName(*pit));
     VMap[(*pit)] = dyn_cast<Value>(ait);
   }
 
@@ -215,8 +274,7 @@ void CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
     // get the operands for the instruction. For every
     // instruction, its operands should be created firstly.
     // if not, it means something is wrong
-    DEBUG_WITH_TYPE("info", dbgs() << "Preparing Operands:"
-                                   << "\n");
+    DEBUG_WITH_TYPE("info", dbgs() << "Preparing Operands:\n");
     for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
       Value *Op = Insn->getOperand(i);
       if (isa<Constant>(Op)) {
@@ -252,6 +310,7 @@ void CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
   IRB.CreateRet(Final);
 
   DEBUG_WITH_TYPE("info", dbgs() << "Function: \n" << *RK);
+  return RK;
 }
 
 FunctionType *CarePass::getFunctionType(std::set<Value *> Params) {
@@ -278,8 +337,6 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
       Inst = IRB.CreateAdd(Operands[0], Operands[1]);
       break;
     case Instruction::GetElementPtr:
-      dbgs() << "Op 0: " << *Operands[0] << "\n";
-      dbgs() << "Op 1: " << *Operands[1] << "\n";
       Inst = IRB.CreateGEP(
           Operands[0],
           std::vector<Value *>(Operands.begin() + 1, Operands.end()));

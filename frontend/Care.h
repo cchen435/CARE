@@ -8,6 +8,8 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
+#include <mhash.h>
+
 #include "DbgInfo.h"
 
 using namespace llvm;
@@ -60,23 +62,32 @@ struct CarePass : public ModulePass {
    * we should create the dbg.value instrinsice for each of them to indicate
    * the location of these objects
    */
-  std::set<Value *> buildRecoveryKernel(Instruction *I);
+  std::pair<Function *, std::set<Value *>> buildRecoveryKernel(Instruction *I);
 
-  void createFunction(Type *RetTy, std::set<Value *> Params,
-                      std::vector<Value *> Stmts);
+  Function *createFunction(Type *RetTy, std::set<Value *> Params,
+                           std::vector<Value *> Stmts);
 
   std::string getFunctionName() {
     static int i = 0;
     return "care_recover_k" + std::to_string(++i);
   };
 
-  std::string getOrCreateName(Value *V) {
-    static int i = 0;
+  std::string getOrCreateValueName(Value *V) {
+    std::string name;
     if (V->hasName()) {
-      return V->getName().str();
+      name = V->getName().str();
+      std::replace(name.begin(), name.end(), '.', '_');
+    } else {
+      raw_string_ostream rso(name);
+      V->printAsOperand(rso, false, nullptr);
+      name = rso.str();
+      name.erase(std::remove(name.begin(), name.end(), '%'), name.end());
+      name = "LV" + name;
     }
-    return "CAREVar" + std::to_string(++i);
+    return name;
   }
+
+  std::string getKey(DebugLoc Loc);
 
   /**
    * create a llvm Function Type based on types of params

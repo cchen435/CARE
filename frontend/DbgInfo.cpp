@@ -74,9 +74,6 @@ DISubroutineType *CAREDIBuilder::createDIFuncType(Function &F) {
 
   Type *retTy = FTy->getReturnType();
 
-  dbgs() << "Function type: " << *FTy << "\n";
-  dbgs() << "return type: " << *retTy << "\n";
-
   DIType *DITy = getOrCreateDIType(retTy);
   EleDITys.push_back(DITy);
 
@@ -85,8 +82,6 @@ DISubroutineType *CAREDIBuilder::createDIFuncType(Function &F) {
   for (i = 0; i < size; i++) {
     Type *Ty = FTy->getParamType(i);
     DITy = getOrCreateDIType(Ty);
-    dbgs() << "IR Type: " << *Ty << " ---> "
-           << "DI Type: " << *DITy << "\n";
     EleDITys.push_back(DITy);
   }
 

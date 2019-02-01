@@ -10,7 +10,6 @@ include_directories(
     ${CARE_SOURCE_DIR}/include
 )
 
-
 add_subdirectory(rtable)    # the recovery table implementation for CARE. It is shared among frontend and runtime.
-add_subdirectory(pass)      # the frontend part of CARE.
+add_subdirectory(frontend)  # the frontend part of CARE.
 add_subdirectory(runtime)   # the runtime part for CARE.

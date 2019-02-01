@@ -14,7 +14,8 @@ package pb;
  */
 
  enum TypeID {
-// PrimitiveTypes - make sure LastPrimitiveTyID stays up to date. VoidTyID      = 0;        ///<  0: type with no size
+// PrimitiveTypes - make sure LastPrimitiveTyID stays up to date. 
+  VoidTyID      = 0;        ///<  0: type with no size
   HalfTyID      = 1;        ///<  1: 16-bit floating point type
   FloatTyID     = 2;        ///<  2: 32-bit floating point type
   DoubleTyID    = 3;        ///<  3: 64-bit floating point type
@@ -41,23 +42,23 @@ message Type{
     repeated Type ElemTy = 1;
   }
 
-  required TypeID ID   = 1;           // The typeID
+  required TypeID ID   = 1;    // The typeID
   oneof SubclassData {
     int32 Width = 2;           // The width (in bits) of the type
     Type PointeeTy = 3;        // Valid only for Pointer Type, representing the base type of pointer
-    StructTy MemberTy = 4;  // Valid only for StructTyID
+    StructTy MemberTy = 4;     // Valid only for StructTyID
     Type ArrayElemTy = 5;      // Valid only for ArrayTyID
   }
 }
 
 message FunctionTy{
   required Type ReturnTy = 1;    // return type
-  required string fname = 2;      // function name
+  required string fname = 2;     // function name
   repeated Type ParamTy = 3;     // parameter types
 }
 
 message Record {
-  required string key = 1;
+  required bytes key = 1;
   required FunctionTy FuncTy = 2;
   repeated string parameters = 3;
 }
