@@ -1,0 +1,25 @@
+## Chester, Titan
+#FC=ftn
+#CC=cc
+## Rhea, Sith
+#FC=mpif90
+CC=mpicc
+
+ADIOS_DIR = /home/apchamp/proj/adiosInstall
+ADIOS_INC = $(shell ${ADIOS_DIR}/bin/adios_config -c)
+ADIOS_CLIB = $(shell ${ADIOS_DIR}/bin/adios_config -l)
+ADIOS_FLIB = $(shell ${ADIOS_DIR}/bin/adios_config -lf)
+ADIOSREAD_SEQ_CLIB = $(shell ${ADIOS_DIR}/bin/adios_config -l -r -s)
+GPP = ${ADIOS_DIR}/bin/gpp.py
+
+
+default: all
+all: read_moments
+
+read_moments: read_moments.c 
+	${CC} -g -c -o read_moments.o ${ADIOS_INC} read_moments.c
+	${CC} -g -o read_moments read_moments.o ${ADIOS_CLIB}
+
+clean:
+	rm -f read_moments read_moments.o
+

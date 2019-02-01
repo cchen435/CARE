@@ -1,0 +1,136 @@
+#!/bin/bash
+#PBS -A CSC094
+#PBS -N nodesTest
+#PBS -j oe
+#PBS -V
+#PBS -l walltime=00:10:00
+#PBS -l nodes=8
+
+# export CMTransportVerbose=1
+# export CMTraceFile=1
+# Replace CR with launch directory #
+cd /lustre/atlas2/csc094/scratch/acham/gtc/GTCP_CPU_Sep13/src/mpi/alex
+ulimit -c unlimited
+numnodes=8
+
+# only works with number of nodes = multiple of 8
+totmod=$((numnodes % 8))
+if [ $totmod -ne 0 ]
+then
+  echo "number of nodes needs to be a multiple of 8...exiting"
+  exit -1
+fi
+
+rm -f nfile.txt
+cat $PBS_NODEFILE > nfile.txt
+NLIST=`python makeNodeList.py nfile.txt`
+echo "comma-separated node list: $NLIST"
+echo "num nodes: $numnodes"
+
+numsim=$((numnodes*3/8))
+numsel=$((numnodes/4))
+numdimr1=$((numnodes/8))
+numdimr2=$((numnodes/8))
+numhist=$((numnodes/8))
+
+ix=0
+
+comma_pos=`expr index $NLIST ","`
+
+
+histls=""
+dimr2ls=""
+dimr1ls=""
+sells=""
+simls=""
+newnode=""
+
+# Distribute Nodes- Create host lists #
+# Creat histogram node list #
+for i in `seq 1 $numhist`;
+do
+  newnode=`expr substr $NLIST 1 $((comma_pos-1))`
+  NLIST=${NLIST#"$newnode,"}
+  histls+="$newnode"
+  if [ $i -eq $numhist ]
+  then
+    let ix=ix+1
+    break
+  else histls+=","
+  fi
+  let ix=ix+1
+  comma_pos=`expr index $NLIST ","`
+done
+echo "hist node list: $histls with ix=$ix and $numhist nodes"
+comma_pos=`expr index $NLIST ","`
+
+# Create dimreduce-1 node list #
+for i in `seq 1 $numdimr1`;
+do
+  newnode=`expr substr $NLIST 1 $((comma_pos-1))`
+  NLIST=${NLIST#"$newnode,"}
+  dimr1ls+="$newnode"
+  if [ $i -eq $numdimr1 ]
+  then
+    let ix=ix+1
+    break
+  else dimr1ls+=","
+  fi
+  let ix=ix+1
+  comma_pos=`expr index $NLIST ","`
+done
+echo "dimr1 node list: $dimr1ls with ix=$ix and $numdimr1 nodes"
+comma_pos=`expr index $NLIST ","`
+
+# Create dimreduce-2 node list #
+for i in `seq 1 $numdimr2`;
+do
+  newnode=`expr substr $NLIST 1 $((comma_pos-1))`
+  NLIST=${NLIST#"$newnode,"}
+  dimr2ls+="$newnode"
+  if [ $i -eq $numdimr2 ]
+  then
+    let ix=ix+1
+    break
+  else dimr2ls+=","
+  fi
+  let ix=ix+1
+  comma_pos=`expr index $NLIST ","`
+done
+echo "dimr2 node list: $dimr2ls with ix=$ix and $numdimr2 nodes"
+comma_pos=`expr index $NLIST ","`
+
+# Create select node list #
+for i in `seq 1 $numsel`;
+do
+  newnode=`expr substr $NLIST 1 $((comma_pos-1))`
+  NLIST=${NLIST#"$newnode,"}
+  sells+="$newnode"
+  if [ $i -eq $numsel ]
+  then
+    let ix=ix+1
+    break
+  else sells+=","
+  fi
+  let ix=ix+1
+  comma_pos=`expr index $NLIST ","`
+done
+echo "sel node list: $sells with ix=$ix and $numsel nodes"
+comma_pos=`expr index $NLIST ","`
+
+# Create select node list #
+simls=$NLIST
+echo "sim node list: $simls with $numsim nodes"
+
+mpirun -n $((numhist*16)) -H $histls histogram oneDpress.fp 32 oneDpress &
+mpirun -n $((numdimr2*16)) -H $dimr2ls dimreduce twoDpress.fp twoDpress 0 1 \
+oneDpress.fp oneDpress &
+mpirun -n $((numdimr1*16)) -H $dimr1ls dimreduce gtc_select.fp perp_pressures 2 1 \ 
+twoDpress.fp twoDpress &
+mpirun -n $((numsel*16)) -H $sells select gtc_raw.fp moments 2 gtc_select.fp \
+perp_pressures perp_press &
+mpirun -n $((numsim*16)) -H $simls bench_gtc_sith_gcc_debug myin.txt 1 2 &
+# unset CMTransportVerbose
+# unset CMTraceFile
+wait
+

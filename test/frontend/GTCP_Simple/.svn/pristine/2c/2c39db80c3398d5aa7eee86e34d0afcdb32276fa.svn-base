@@ -1,0 +1,122 @@
+4 Scientific Workflow Components: SELECT, MAGNITUDE, DIMREDUCE, HISTOGRAM 
+=========================================================================
+Alexis Champsaur, Sandia Labs, July 2015
+
+
+select.c
+--------------------------------------------------------------
+
+This program is designed to be an intermediary component
+in a scientific workflow. It selects certain indices from one 
+of the dimensions of a multi-dimensional array read as input from
+a Flexpath stream. The indices to be selected are specified by their
+names, which are recognized using a header string that is part  of 
+the input.
+The output is another multi-dimensional array consisting of the 
+selected quantities.
+
+The names of the input and output streams and arrays, as well as the 
+quantities to be extracted are passed as command-line arguments.
+
+The input stream must contain a header called "header_string" to 
+indicate what quantities are contained in the input array, and how they
+are arranged. The format of the header string is "var1:var2:var3..."
+where var1, var2, var3... are the names of the quantities in the input
+array, in the order in which they appear there.
+
+Quantities required in the input stream: 
+  - zero-terminated byte array named "header_string"
+    (the header string, a colon-separated list of the names of
+     the variables in the dimension to be selected from)
+  - integer named "header_len" (length of the above, including terminator)
+  - uint64_t (adios unsigned long) named "ntimestep" (time step- no major 
+  role in the selection)
+  - data array
+
+Usage:
+ <exec> input-stream-name input-array-name dimension-index \
+        output-stream-name output-arr-name \
+        arg1 [arg2] [arg3] ...
+Where arg1, arg2... are the names of the quantities to be selected
+from the dimension whose index in the order of dimensions (dim0, dim1...)
+is dimensions-index.
+(dim0, dim1 ...) is the order in which the dimensions of the input 
+array are represented in the input stream.
+
+
+magnitude.c
+--------------------------------------------------------------
+
+This program is designed to be an intermediary component
+in a scientific workflow. Given as input a 2D array composed
+of a quantity broken into its N dimensionsal components over 
+any number of datapoints and timesteps, this program computes 
+and outputs the magnitudes for this quantity 
+for all data points into a new 1-D array for each timestep, 
+through a new Flexpath stream.
+
+Input and output is done through ADIOS/FLEXPATH.
+
+INPUT: 2D array in a flexpath stream
+OUTPUT: 1D array in a flexpath stream
+
+Example input: 
+   [v1_x, v1_y, v1_z, v2_x, v2_y, v2_z, ... ]
+Example output:
+   [ |v1| , |v2| , ... ]
+
+Quantities required in the input stream:
+  - zero-terminated byte array "header_string" (just to keep track
+        of what quantities are being used to calculate the magnitude
+  - not crucial to calculations)
+  - integer named "header_len" (length of the above)
+  - uint64_t (adios unsigned long) named "ntimestep"
+
+Input array dimensions: 1st dimension should span the data "points," such
+as the particles. 2nd dimension should span the components of the desired
+magnitude for each point.
+
+
+Usage:
+ <exec> input-stream-name input-arr-name \
+        output-stream-name ouput-arr-name 
+
+dimreduce.c
+--------------------------------------------------------------
+This program is designed to be an intermediary component
+in a scientific workflow. 
+
+Usage:
+ <exec> input-stream-name input-array-name 
+        dim-to-remove dim-to-grow
+        output-stream-name output-array-name
+
+Given a multi-dim array, the dimension whose index is "dim-to-grow" 
+will "absorb" the dimension whose index is "dim-to-remove".
+
+
+
+histogram.cpp
+--------------------------------------------------------------
+
+Histogram Component
+
+Algorithm between lines 144-179 is by:
+   Venkatram Vishwanath on 12/17/14.
+Rest by : Alexis Champsaur, Sandia Labs.
+
+This program is designed to be an enpoint component in 
+a scientific workflow. It reads a 1-D array from a data  
+stream using ADIOS-FLEXPATH, and computes and writes to a disk file
+a histogram of the values contained in the array for each timestep 
+until the end of the stream is reached.
+
+Usage:
+ <exec> input-stream-name input-array-name num-bins
+  (where num-bins is the number of bins of the final histograms)
+
+Quantities required in the input stream:
+  - global 1D array containing data of interest for the histogram
+  - uint64_t (adios unsigned long) named "ntimestep"
+
+

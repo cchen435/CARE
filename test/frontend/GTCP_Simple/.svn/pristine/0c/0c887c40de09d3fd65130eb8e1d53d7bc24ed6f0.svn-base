@@ -1,0 +1,68 @@
+HOW TO BUILD AND RUN GTCP-CPU
+B. Wang 1/21/2013
+----------------------------------------
+1. After unzipping and untarring the file, you will find most of the source code in the
+   subdirectory src/mpi.
+
+2. The makefiles are in subdirectory ARCH. Included are several example makefiles
+   for different systems (vesta-BGQ system at ALCF, titan-cray XK7 system at OLCF, etc.)
+   Please modify it for your system accordingly.
+
+3. Several example scripts (file name started with build_*) are included in the subdirectory
+   src/mpi to build the code. Basically, it loads the appropriate modules and issues the command
+   with the correct arguments.
+
+4. The input problem sizes are included in src/mpi/input. For example, if we run all tests
+   with 100 particles per cell (ppc) with toroidal domain decomposition only,
+   the memory usage for each PE (processor element) is:
+   input filename    # of particles in one toroidal domain (mem. usage)  # of grid pts (mem. usage)
+   -------------    --------------------------------------------------  ----------------------------
+   A.txt            3,235,896     (0.3G)                                 32,449    (1M) 
+   B.txt            1,235,644,416 (1.2G)                                 128,893   (4M)
+   C.txt            4,928,876,544 (4.8G)                                 513,785   (16M)
+   D.txt            19,688,128,512 (19.2G)                               2,051,567 (64M)
+
+   Based on toroidal domain decomposition, we introduce two additional levels of distributed parallelism
+   and one level of multithreaded, shared memory parallelism implemented with loop-level OpenMP directives:
+   radial domain decomposition and particle decomposition. By introducing radial domain decomposition,
+   the amount of computation and memory usage in a single toroidal domain are distributed
+   across different PEs in radial dimension. For example, if we decompose one toroidal domain into 8
+   radial domains, the memory usage in each PE will be roughly 1/8 of the number given on the table above.
+
+   We can further distribute the particle-related work and particle memory usage through particle
+   decomposition on each radial domain. For example, if we decompose one toroidal domain into 8 radial
+   domains and then distribute the total number of particles in each radial domain on 2 MPI processes,
+   the particle memory usage in each PE will be 1/16 of the number given on the table above.
+
+   Assume that we use only 1 particle copy in each radial domain (no particle decomposition), a typical
+   weak scaling experiment will use the parameters below:
+   problem size input filename # of domain in toroidal dim. # of domain in radial dim. total # of MPI proc.
+   -----------  -------------- ---------------------------  -------------------------  -------------------
+   a125         A.txt          64                           8                          512
+   a250         B.txt          64                           32                         2048
+   a500         C.txt          64                           128                        8192
+   a1000        D.txt          64                           512                        32768
+
+5. the # of domain in toroidal dim is given as a command line argument
+   the # of particle copies in each radial domain is given in the input file npe_radiald
+   the # of domain in radial dim is calculated as: total # of MPI proc/(# of domain in toroidal dim * npe_radiald)
+
+6. The loop-level parallelism is turned on by using OpenMP.
+
+7. For example, we use the command below to run the a125 test with npe_radiald=1 and 100ppc on Titan:
+   export OMP_NUM_THREADS 16 
+   aprun -n 512 -N 1 -s 16 ./executable ./input/A.txt 100 64
+
+   and on BG/Q 
+   qsub -n 512 --proccount 512 --mode c1 -t 60 --env BG_SHAREDMEMSIZE=32:PAMID_CONTEXT_MAX=26:BG_THREA\
+   DLAYOUT=1:OMP_NUM_THREADS=64:BG_SMP_FAST_WAKEUP=YES:OMP_WAIT_POLICY=active ./bench_gtc_vesta_opt ./A.txt 100 64
+
+   The total number of MPI process for the simulation is 512
+   The number of MPI process in a compute node is 1
+   The number of OpenMP threads is 16 on Titan (or 64 on BGQ) for each MPI process
+   The input file is ./input/A.txt
+   The number of particles per cell is 100
+   The number of domain in the toroidal dimension is 64
+
+8. For performance study, mstep=100 is commonly used. (given in input file).
+   For physics study, mstep=10000 or more is commonly used.

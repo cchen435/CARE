@@ -1,0 +1,20 @@
+# mpirun -n 6 -hostfile mhSelC select gtc_raw.fp moments 2 gtc_select.fp perp_pressures \
+# perp_press & \
+# mpirun -n 2 -hostfile mhDimrC1 dimreduce gtc_select.fp perp_pressures 2 1 gtc_reduced2D.fp moments_reduce & \
+# mpirun -n 2 -hostfile mhDimrC1 dimreduce gtc_reduced2D.fp moments_reduce 0 1 gtc_reduced1D.fp perp_pressures & \
+# mpirun -n 2 -hostfile mhDimrC1 histogram gtc_reduced1D.fp perp_pressures 15
+# 
+mpirun -n 4 -H falcon8 histogram oneDpress.fp 16 oneDpress &
+mpirun -n 6 -H falcon7 dimreduce twoDpress.fp twoDpress 0 1 \
+oneDpress.fp oneDpress &> dimred2.out &
+# valgrind --tool=memcheck --suppressions=/net/hp100/achampsa/evpath_manual/evpath/evpath.supp \
+# --leak-check=yes --show-reachable=yes mpirun -n 6 -H falcon3 dimreduce gtc_select.fp perp_pressures 2 1 \
+# n2.bp twoDpress &> dimred1.out &
+# valgrind --tool=memcheck --suppressions=/net/hp100/achampsa/evpath_manual/evpath/evpath.supp \
+# --leak-check=yes --show-reachable=yes \
+mpirun -n 6 -H falcon7 dimreduce gtc_select.fp perp_pressures 2 1 \
+twoDpress.fp twoDpress &> dimred1.out &
+mpirun -n 12 -H falcon4 select gtc_raw.fp moments 2 gtc_select.fp \
+perp_pressures perp_press &> select.out &
+mpirun -n 24 -H falcon2,falcon3 bench_gtc_sith_gcc_debug B.txt 1 2 &> sim.out &
+wait

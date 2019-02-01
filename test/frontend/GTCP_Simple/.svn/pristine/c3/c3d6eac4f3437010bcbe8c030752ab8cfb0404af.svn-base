@@ -1,0 +1,18 @@
+To build the host-only MPI/OpenMP executable, do
+$ make ARCH=stampede-host clean
+$ make ARCH=stampede-host
+This will create the binary bench_gtc_stampede_host
+
+A sample slurm script gtcp_stampede_host is in the mpi directory.
+$ sbatch gtcp_stampede_host
+
+To build the MIC-only MPI/OpenMP executable, do
+$ module swap mvapich2 impi
+$ add -mmic to L38 of Makefile
+(symmetric mode MIC MPI executables can only be built with Intel MPI)
+$ make ARCH=stampede-mic clean
+$ make ARCH=stampede-mic
+This will create the binary bench_gtc_stampede_mic
+
+A sample slurm script gtcp_stampede_mic is in the mpi directory.
+$ sbatch gtcp_stampede_mic

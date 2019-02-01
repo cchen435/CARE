@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<adios-config host-language="C">
+
+<adios-group name="restart" time-index="istep">
+  <var name="istep" type="integer"/>
+  <var name="mype" type="integer"/>
+  <var name="numberpe" type="integer"/>
+
+  <var name="nparam" type="integer"/>
+
+  <var name="mi" type="integer"/>
+  <var name="mi_total" type="integer"/>
+  <var name="mi_offset" type="integer"/>
+
+  <var name="ntracer" type="integer"/>
+  <var name="ntracer_i0" type="integer"/>
+
+  <var name="misum" type="integer"/>
+
+  <var name="zion" type="double" dimensions="nparam,mi_total"/>
+
+  <var name="ntracer_e" type="integer"/>
+  <var name="etracer_e0" type="integer"/>
+
+  <var name="mesum" type="integer"/>
+
+  <var name="me" type="integer"/>
+  <var name="me_total" type="integer"/>
+  <var name="me_offset" type="integer"/>
+
+  <var name="zeon" type="double" dimensions="nparam,me_total"/>
+
+<!--
+  <var name="mpsi+1" type="integer"/>
+  <var name="mzeta+1" type="integer"/>
+  <var name="mgrid" type="integer"/>
+  <var name="nparam" type="integer"/>
+  <var name="nhybrid" type="integer"/>
+  <var name="2*nhybrid" type="integer"/>
+
+  <var name="mzeta" type="integer"/>
+
+  <var name="etracer" type="double"/>
+  <var name="mflux" type="integer"/>
+  <var name="rdtemi" type="double" dimensions="mpsi+1"/>
+  <var name="rdteme" type="double" dimensions="mpsi+1"/>
+  <var name="ptracer" type="double" dimensions="4"/>
+  <var name="pfluxpsi" type="double" dimensions="mpsi+1"/>
+  <var name="phi00" type="double" dimensions="mpsi+1"/>
+  <var name="phip00" type="double" dimensions="mpsi+1"/>
+  <var name="zonali" type="double" dimensions="mpsi+1"/>
+  <var name="zonale" type="double" dimensions="mpsi+1"/>
+  <var name="zion0" type="double" dimensions="mi_total"/>
+  <var name="phi" type="double" dimensions="mzeta+1,mgrid"/>
+  <var name="zelectron0" type="double" dimensions="me_total"/>
+  <var name="zelectron" type="double" dimensions="nparam,me_total"/>
+  <var name="phisave" type="double" dimensions="mzeta+1,mgrid,2*nhybrid"/>
+-->
+</adios-group>
+
+<adios-group name="moments">
+  <var name="mgrid" type="integer"/>
+  <var name="ntoroidal" type="integer"/>
+  <var name="igrid_moments_in" type="integer"/>
+  <var name="igrid_nover_in" type="integer"/>
+  <var name="nloc_nover" type="integer"/>
+  <var name="nloc_calc_moments" type="integer"/>
+  <var name="myrank_toroidal" type="integer"/>
+  <attribute name="description" path="/myrank_toroidal" type="string"
+      value="rank of MPI process in toroidal communicator"/>
+
+ <global-bounds dimensions="ntoroidal,mgrid,7"
+   offsets="myrank_toroidal,igrid_moments_in,0">
+  <var name="moments" gwrite="momentstmp+7*(igrid_nover_in-igrid_moments_in)" 
+   type="double" dimensions="1,nloc_calc_moments,7"/>
+ </global-bounds>
+
+</adios-group>
+
+<method method="POSIX" group="restart"/>
+<method method="MPI" group="moments"/>
+
+<buffer size-MB="40" allocate-time="now"/>
+<!-- or free-memory-percentage="90" allocate-time="oncall" -->
+</adios-config>

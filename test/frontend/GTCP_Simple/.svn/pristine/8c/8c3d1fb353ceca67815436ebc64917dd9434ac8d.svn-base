@@ -1,0 +1,10 @@
+#!/bin/bash
+#PBS -A CSC094 
+#PBS -N mpihello
+#PBS -j oe
+#PBS -l walltime=00:05:00,nodes=2
+
+cd /lustre/atlas2/csc094/scratch/acham/lammps-15May15/examples/crack
+
+mpirun -n 17 mpi_hello &
+mpirun -n 8 mpi_hello 

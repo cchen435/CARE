@@ -1,0 +1,155 @@
+
+/**
+ *  the register mapping from DWARF naming to libc naming
+ */
+
+#define REG_INVALID -1
+#define REG_RESERVED -2
+
+enum {
+    //REG_XMM0 = 17,
+    REG_XMM0 = 0,
+# define REG_XMM0   REG_XMM0
+    REG_XMM1,
+# define REG_XMM1   REG_XMM1
+    REG_XMM2,
+# define REG_XMM2   REG_XMM2
+    REG_XMM3,
+# define REG_XMM3   REG_XMM3
+    REG_XMM4,
+# define REG_XMM4   REG_XMM4
+    REG_XMM5,
+# define REG_XMM5   REG_XMM5
+    REG_XMM6,
+# define REG_XMM6   REG_XMM6
+    REG_XMM7,
+# define REG_XMM7   REG_XMM7
+    REG_XMM8,
+# define REG_XMM8   REG_XMM8
+    REG_XMM9,
+# define REG_XMM9   REG_XMM9
+    REG_XMM10,
+# define REG_XMM10  REG_XMM10
+    REG_XMM11,
+# define REG_XMM11  REG_XMM11
+    REG_XMM12,
+# define REG_XMM12  REG_XMM12
+    REG_XMM13,
+# define REG_XMM13  REG_XMM13
+    REG_XMM14,
+# define REG_XMM14  REG_XMM14
+    REG_XMM15,
+# define REG_XMM15  REG_XMM15
+};
+
+enum {
+   //REG_ST0 = 33,
+   REG_ST0 = 0,
+#define REG_ST0     REG_ST0  
+   REG_ST1,
+#define REG_ST1     REG_ST1  
+   REG_ST2,
+#define REG_ST2     REG_ST2  
+   REG_ST3,
+#define REG_ST3     REG_ST3  
+   REG_ST4,
+#define REG_ST4     REG_ST4  
+   REG_ST5,
+#define REG_ST5     REG_ST5  
+   REG_ST6,
+#define REG_ST6     REG_ST6  
+   REG_ST7,
+#define REG_ST7     REG_ST7  
+    };
+
+enum {
+    //REG_MM0 = 41,
+    REG_MM0 = 0,
+# define REG_MM0 REG_MM0
+    REG_MM1,
+# define REG_MM1 REG_MM1
+    REG_MM2,
+# define REG_MM2 REG_MM2
+    REG_MM3,
+# define REG_MM3 REG_MM3
+    REG_MM4,
+# define REG_MM4 REG_MM4
+    REG_MM5,
+# define REG_MM5 REG_MM5
+    REG_MM6,
+# define REG_MM6 REG_MM6
+    REG_MM7,
+# define REG_MM7 REG_MM7
+};
+
+HANDLE_REG (0,       "RAX",       64,      REG_RAX)
+HANDLE_REG (1,       "RDX",       64,      REG_RDX)
+HANDLE_REG (2,       "RCX",       64,      REG_RCX)
+HANDLE_REG (3,       "RBX",       64,      REG_RBX)
+HANDLE_REG (4,       "RSI",       64,      REG_RSI)
+HANDLE_REG (5,       "RDI",       64,      REG_RDI)
+HANDLE_REG (6,       "RBP",       64,      REG_RBP)
+HANDLE_REG (7,       "RSP",       64,      REG_RSP)
+HANDLE_REG (8,       "R8" ,       64,      REG_R8 )
+HANDLE_REG (9,       "R9",        64,      REG_R9 )
+HANDLE_REG (10,      "R10",       64,      REG_R10)
+HANDLE_REG (11,      "R11",       64,      REG_R11)
+HANDLE_REG (12,      "R12",       64,      REG_R12)
+HANDLE_REG (13,      "R13",       64,      REG_R13)
+HANDLE_REG (14,      "R14",       64,      REG_R14)
+HANDLE_REG (15,      "R15",       64,      REG_R15)
+
+// R16 is used as return address in dwarf, but there 
+// is no pysical register for it
+HANDLE_REG (16,      "RA",        64,        REG_INVALID);
+
+// 17 - 24 are for vector registers (xmm0 - xmm7)
+// 25 - 32 are for extended vector registers (xmm8 - xmm15)
+HANDLE_REG (17,      "XMM0",        64,        REG_XMM0 )
+HANDLE_REG (18,      "XMM1",        64,        REG_XMM1 )
+HANDLE_REG (19,      "XMM2",        64,        REG_XMM2 )
+HANDLE_REG (20,      "XMM3",        64,        REG_XMM3 )
+HANDLE_REG (21,      "XMM4",        64,        REG_XMM4 )
+HANDLE_REG (22,      "XMM5",        64,        REG_XMM5 )
+HANDLE_REG (23,      "XMM6",        64,        REG_XMM6 )
+HANDLE_REG (24,      "XMM7",        64,        REG_XMM7 )
+HANDLE_REG (25,      "XMM8",        64,        REG_XMM8 )
+HANDLE_REG (26,      "XMM9",        64,        REG_XMM9 )
+HANDLE_REG (27,      "XMM10",       64,        REG_XMM10)
+HANDLE_REG (28,      "XMM11",       64,        REG_XMM11)
+HANDLE_REG (29,      "XMM12",       64,        REG_XMM12)
+HANDLE_REG (30,      "XMM13",       64,        REG_XMM13)
+HANDLE_REG (31,      "XMM14",       64,        REG_XMM14)
+HANDLE_REG (32,      "XMM15",       64,        REG_XMM15)
+
+// 33 - 40 are for float pointing register
+HANDLE_REG (33,      "ST0",         64,        REG_ST0)
+HANDLE_REG (34,      "ST1",         64,        REG_ST1)
+HANDLE_REG (35,      "ST2",         64,        REG_ST2)
+HANDLE_REG (36,      "ST3",         64,        REG_ST3)
+HANDLE_REG (37,      "ST4",         64,        REG_ST4)
+HANDLE_REG (38,      "ST5",         64,        REG_ST5)
+HANDLE_REG (39,      "ST6",         64,        REG_ST6)
+HANDLE_REG (40,      "ST7",         64,        REG_ST7)
+
+// 41 - 48 are for MMX registers
+HANDLE_REG (41,      "MMX0",        64,        REG_MM0)
+HANDLE_REG (42,      "MMX1",        64,        REG_MM1)
+HANDLE_REG (43,      "MMX2",        64,        REG_MM2)
+HANDLE_REG (44,      "MMX3",        64,        REG_MM3)
+HANDLE_REG (45,      "MMX4",        64,        REG_MM4)
+HANDLE_REG (46,      "MMX5",        64,        REG_MM5)
+HANDLE_REG (47,      "MMX6",        64,        REG_MM6)
+HANDLE_REG (48,      "MMX7",        64,        REG_MM7)
+
+#if 0
+// flag and segment registsrs
+HANDLE_REG (49,      "FLAG",        64,        REG_FLAG)
+HANDLE_REG (50,      "ES"  ,        64,        REG_ES)
+HANDLE_REG (51,      "CS"  ,        64,        REG_CS)
+HANDLE_REG (52,      "SS"  ,        64,        REG_SS)
+HANDLE_REG (53,      "DS"  ,        64,        REG_DS)
+HANDLE_REG (54,      "FS"  ,        64,        REG_FS)
+HANDLE_REG (55,      "GS"  ,        64,        REG_GS)
+
+#endif

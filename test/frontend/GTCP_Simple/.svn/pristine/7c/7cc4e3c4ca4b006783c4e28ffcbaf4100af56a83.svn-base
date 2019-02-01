@@ -1,0 +1,23 @@
+# Define the following to 1 to enable build
+BENCH_GTC_MPI = 1
+BENCH_CHARGEI_PTHREADS = 0
+BENCH_PUSHI_PTHREADS = 0
+BENCH_SERIAL = 0
+
+CC = mpixlc_r
+MPICC = mpixlc_r
+CFLAGS = -DUSE_MPI=1 
+CFLAGSOMP =
+COPTFLAGS = -O0 -g -qsmp=omp:noopt:noauto -qfloat=nofold
+#COPTFLAGS = -O0 -qsmp=omp:noauto
+CDEPFLAGS = 
+#CLDFLAGS = -L/home/morozov/lib -lmpihpm_smp -L/bgsys/drivers/ppcfloor/bgpm/lib -lbgpm
+MPIDIR = 
+CFLAGS  +=
+
+
+EXEEXT = _vesta_debug
+
+AR = ar
+ARCRFLAGS = cr
+RANLIB = ranlib

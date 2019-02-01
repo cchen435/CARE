@@ -1,0 +1,31 @@
+# Define the following to 1 to enable build
+BENCH_GTC_MPI = 1
+BENCH_CHARGEI_PTHREADS = 0
+BENCH_PUSHI_PTHREADS = 0
+BENCH_SERIAL = 0
+
+CC = cc
+MPICC = cc
+
+#-Xptxas -dlcm=cg disable L1 caching
+#-G gpu debug
+
+# Set ADIOS DIR
+override ADIOS_INC:=`${ADIOSGIT}/bin/adios_config -c`
+override ADIOS_LIB:=`${ADIOSGIT}/bin/adios_config -l`
+
+CFLAGS = -c99 ${ADIOS_INC} -DUSE_MPI=1 -DUSE_ADIOS=1
+CFLAGSOMP =
+COPTFLAGS = -O0 
+CDEPFLAGS =  
+CLDFLAGS = -lenet
+MPIDIR = 
+#CFLAGS  +=  -I$(CUDA_HOME)/include/
+
+LIB = ${ADIOS_LIB}
+ 
+EXEEXT = _titan_gencomps
+AR = ar
+ARCRFLAGS = cr
+RANLIB = ranlib
+

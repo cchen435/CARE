@@ -1,0 +1,259 @@
+/* reg.map. it maps the reg definition in udis86 to human readable 
+ * names and the definition in libc ucontext_t
+ * format: (UD_DEFINITION, NAME, UCONTECT_DEFINITION)
+ */
+
+#define REG_INVALID -2
+
+ HANDLE_REG(UD_NONE, "NONE", -1, -1)
+#ifdef __x86_64__
+ // Instruction Pointer
+ HANDLE_REG(UD_R_RIP, "RIP", 64, REG_RIP)
+
+ // 8-Bit General Purpose Register, in ucontext there is no 8-bit and 16-bit registers 
+ // so mapping them to the related 64bit registers, reference: https://en.wikibooks.org/wiki/X86_Assembly/X86_Architecture
+ HANDLE_REG (UD_R_AH,       "AH",       8,      REG_RAX)
+ HANDLE_REG (UD_R_AL,       "AL",       8,      REG_RAX)
+ HANDLE_REG (UD_R_BH,       "BH",       8,      REG_RBX)
+ HANDLE_REG (UD_R_BL,       "BL",       8,      REG_RBX)
+ HANDLE_REG (UD_R_CH,       "CH",       8,      REG_RCX)
+ HANDLE_REG (UD_R_CL,       "CL",       8,      REG_RCX)
+ HANDLE_REG (UD_R_DH,       "DH",       8,      REG_RDX)
+ HANDLE_REG (UD_R_DL,       "DL",       8,      REG_RDX)
+ HANDLE_REG (UD_R_SPL,      "SPL",      8,      REG_RSP)
+ HANDLE_REG (UD_R_BPL,      "BPL",      8,      REG_RBP)
+ HANDLE_REG (UD_R_SIL,      "SIL",      8,      REG_RSI)
+ HANDLE_REG (UD_R_DIL,      "DIL",      8,      REG_RDI)
+ HANDLE_REG (UD_R_R8B,      "R8B",      8,      REG_R8)
+ HANDLE_REG (UD_R_R9B,      "R9B",      8,      REG_R9)
+ HANDLE_REG (UD_R_R10B,     "R10B",     8,      REG_R10)
+ HANDLE_REG (UD_R_R11B,     "R11B",     8,      REG_R11)
+ HANDLE_REG (UD_R_R12B,     "R12B",     8,      REG_R12)
+ HANDLE_REG (UD_R_R13B,     "R13B",     8,      REG_R13)
+ HANDLE_REG (UD_R_R14B,     "R14B",     8,      REG_R14)
+ HANDLE_REG (UD_R_R15B,     "R15B",     8,      REG_R15)
+
+// 16-bit General Purpose registers
+ HANDLE_REG (UD_R_AX,       "AX",       16,     REG_RAX)
+ HANDLE_REG (UD_R_CX,       "CX",       16,     REG_RCX)
+ HANDLE_REG (UD_R_DX,       "DX",       16,     REG_RDX)
+ HANDLE_REG (UD_R_BX,       "BX",       16,     REG_RBX)
+ HANDLE_REG (UD_R_SP,       "SP",       16,     REG_RSP) 
+ HANDLE_REG (UD_R_BP,       "BP",       16,     REG_RBP)
+ HANDLE_REG (UD_R_SI,       "SI",       16,     REG_RSI)
+ HANDLE_REG (UD_R_DI,       "DI",       16,     REG_RDI)
+ HANDLE_REG (UD_R_R8W,      "R8W",      16,     REG_R8)
+ HANDLE_REG (UD_R_R9W,      "R9W",      16,     REG_R9)
+ HANDLE_REG (UD_R_R10W,     "R10W",     16,     REG_R10)
+ HANDLE_REG (UD_R_R11W,     "R11W",     16,     REG_R11)
+ HANDLE_REG (UD_R_R12W,     "R12W",     16,     REG_R12)      
+ HANDLE_REG (UD_R_R13W,     "R13W",     16,     REG_R13)  
+ HANDLE_REG (UD_R_R14W,     "R14W",     16,     REG_R14)  
+ HANDLE_REG (UD_R_R15W,     "R15W",     16,     REG_R15)
+
+// 32-bit General Purpose Registers 
+ HANDLE_REG (UD_R_EAX,      "EAX",      32,     REG_RAX)
+ HANDLE_REG (UD_R_ECX,      "ECX",      32,     REG_RCX)
+ HANDLE_REG (UD_R_EDX,      "EDX",      32,     REG_RDX)
+ HANDLE_REG (UD_R_EBX,      "EBX",      32,     REG_RBX)
+ HANDLE_REG (UD_R_ESP,      "ESP",      32,     REG_RSP)
+ HANDLE_REG (UD_R_EBP,      "EBP",      32,     REG_RBP)
+ HANDLE_REG (UD_R_ESI,      "ESI",      32,     REG_RSI)
+ HANDLE_REG (UD_R_EDI,      "EDI",      32,     REG_RDI)
+ HANDLE_REG (UD_R_R8D,      "R8D",      32,     REG_R8)
+ HANDLE_REG (UD_R_R9D,      "R9D",      32,     REG_R9)
+ HANDLE_REG (UD_R_R10D,     "R10D",     32,     REG_R10) 
+ HANDLE_REG (UD_R_R11D,     "R11D",     32,     REG_R11)
+ HANDLE_REG (UD_R_R12D,     "R12D",     32,     REG_R12) 
+ HANDLE_REG (UD_R_R13D,     "R13D",     32,     REG_R13) 
+ HANDLE_REG (UD_R_R14D,     "R14D",     32,     REG_R14) 
+ HANDLE_REG (UD_R_R15D,     "R15D",     32,     REG_R15)
+
+
+ //64-bit General Purpose Registers
+ HANDLE_REG (UD_R_RAX,      "RAX",      64,     REG_RAX)
+ HANDLE_REG (UD_R_RCX,      "RCX",      64,     REG_RCX)
+ HANDLE_REG (UD_R_RDX,      "RDX",      64,     REG_RDX)
+ HANDLE_REG (UD_R_RBX,      "RBX",      64,     REG_RBX)
+ HANDLE_REG (UD_R_RSP,      "RSP",      64,     REG_RSP)
+ HANDLE_REG (UD_R_RBP,      "RBP",      64,     REG_RBP)
+ HANDLE_REG (UD_R_RSI,      "RSI",      64,     REG_RSI)
+ HANDLE_REG (UD_R_RDI,      "RDI",      64,     REG_RDI)
+ HANDLE_REG (UD_R_R8,       "R8",       64,     REG_R8)
+ HANDLE_REG (UD_R_R9,       "R9",       64,     REG_R9)
+ HANDLE_REG (UD_R_R10,      "R10",      64,     REG_R10) 
+ HANDLE_REG (UD_R_R11,      "R11",      64,     REG_R11)
+ HANDLE_REG (UD_R_R12,      "R12",      64,     REG_R12)
+ HANDLE_REG (UD_R_R13,      "R13",      64,     REG_R13) 
+ HANDLE_REG (UD_R_R14,      "R14",      64,     REG_R14) 
+ HANDLE_REG (UD_R_R15,      "R15",      64,     REG_R15)
+
+
+#else /* !__x86_64__ */
+ // Instruction Pointer
+ HANDLE_REG (UD_R_RIP, "EIP", REG_EIP)
+
+ // 8-Bit General Purpose Register, in ucontext there is no 8-bit and 16-bit registers 
+ // so mapping them to the related 64bit registers, reference: https://en.wikibooks.org/wiki/X86_Assembly/X86_Architecture
+ HANDLE_REG (UD_R_AH,       "AH",               8,      REG_EAX)
+ HANDLE_REG (UD_R_AL,       "AL",               8,      REG_EAX)
+ HANDLE_REG (UD_R_BH,       "BH",               8,      REG_EBX)
+ HANDLE_REG (UD_R_BL,       "BL",               8,      REG_EBX)
+ HANDLE_REG (UD_R_CH,       "CH",               8,      REG_ECX)
+ HANDLE_REG (UD_R_CL,       "CL",               8,      REG_ECX)
+ HANDLE_REG (UD_R_DH,       "DH",               8,      REG_EDX)
+ HANDLE_REG (UD_R_DL,       "DL",               8,      REG_EDX)
+ HANDLE_REG (UD_R_SPL,      "SPL",              8,      REG_ESP)
+ HANDLE_REG (UD_R_BPL,      "BPL",              8,      REG_EBP)
+ HANDLE_REG (UD_R_SIL,      "SIL",              8,      REG_ESI)
+ HANDLE_REG (UD_R_DIL,      "DIL",              8,      REG_EDI)
+ HANDLE_REG (UD_R_R8B,      "R8B_INVALID",      8,      REG_INVALID)
+ HANDLE_REG (UD_R_R9B,      "R9B_INVALID",      8,      REG_INVALID)
+ HANDLE_REG (UD_R_R10B,     "R10B_INVALID",     8,      REG_INVALID)
+ HANDLE_REG (UD_R_R11B,     "R11B_INVALID",     8,      REG_INVALID)
+ HANDLE_REG (UD_R_R12B,     "R12B_INVALID",     8,      REG_INVALID)
+ HANDLE_REG (UD_R_R13B,     "R23B_INVALID",     8,      REG_INVALID)
+ HANDLE_REG (UD_R_R14B,     "R14B_INVALID",     8,      REG_INVALID)
+ HANDLE_REG (UD_R_R15B,     "R15B_INVALID",     8,      REG_INVALID)
+
+// 16-bit General Purpose registers
+ HANDLE_REG (UD_R_AX,       "AX",               16,     REG_EAX)
+ HANDLE_REG (UD_R_CX,       "CX",               16,     REG_ECX)
+ HANDLE_REG (UD_R_DX,       "DX",               16,     REG_EDX)
+ HANDLE_REG (UD_R_BX,       "BX",               16,     REG_EBX)
+ HANDLE_REG (UD_R_SP,       "SP",               16,     REG_ESP) 
+ HANDLE_REG (UD_R_BP,       "BP",               16,     REG_EBP)
+ HANDLE_REG (UD_R_SI,       "SI",               16,     REG_ESI)
+ HANDLE_REG (UD_R_DI,       "DI",               16,     REG_EDI)
+ HANDLE_REG (UD_R_R8W,      "R8W_INVALID",      16,     REG_INVALID)
+ HANDLE_REG (UD_R_R9W,      "R9W_INVALID",      16,     REG_INVALID)
+ HANDLE_REG (UD_R_R10W,     "R10W_INVALID",     16,     REG_INVALID)
+ HANDLE_REG (UD_R_R11W,     "R11W_INVALID",     16,     REG_INVALID)
+ HANDLE_REG (UD_R_R12W,     "R12W_INVALID",     16,     REG_INVALID)      
+ HANDLE_REG (UD_R_R13W,     "R13W_INVALID",     16,     REG_INVALID)  
+ HANDLE_REG (UD_R_R14W,     "R14W_INVALID",     16,     REG_INVALID)  
+ HANDLE_REG (UD_R_R15W,     "R15W_INVALID",     16,     REG_INVALID)
+
+// 32-bit General Purpose Registers 
+ HANDLE_REG (UD_R_EAX,      "EAX",              32,     REG_EAX)
+ HANDLE_REG (UD_R_ECX,      "ECX",              32,     REG_ECX)
+ HANDLE_REG (UD_R_EDX,      "EDX",              32,     REG_EDX)
+ HANDLE_REG (UD_R_EBX,      "EBX",              32,     REG_EBX)
+ HANDLE_REG (UD_R_ESP,      "ESP",              32,     REG_ESP)
+ HANDLE_REG (UD_R_EBP,      "EBP",              32,     REG_EBP)
+ HANDLE_REG (UD_R_ESI,      "ESI",              32,     REG_ESI)
+ HANDLE_REG (UD_R_EDI,      "EDI",              32,     REG_EDI)
+ HANDLE_REG (UD_R_R8D,      "R8D_INVALID",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_R9D,      "R9D_INVALID",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_R10D,     "R10D_INVALID",     32,     REG_INVALID) 
+ HANDLE_REG (UD_R_R11D,     "R11D_INVALID",     32,     REG_INVALID)
+ HANDLE_REG (UD_R_R12D,     "R12D_INVALID",     32,     REG_INVALID) 
+ HANDLE_REG (UD_R_R13D,     "R13D_INVALID",     32,     REG_INVALID) 
+ HANDLE_REG (UD_R_R14D,     "R14D_INVALID",     32,     REG_INVALID) 
+ HANDLE_REG (UD_R_R15D,     "R15D_INVALID",     32,     REG_INVALID)
+#endif // end of defined __x86_64__
+
+//TODO: x87 FPU represents a seperate execution environment.
+// it consists of 8 data registers and 6 special-purpose registers.
+// add the mapping for these 6 special-purpose registers.
+
+ // x87 FPU Data Registers
+ HANDLE_REG (UD_R_ST0,      "ST0",     80,    0)   
+ HANDLE_REG (UD_R_ST1,      "ST1",     80,    1)   
+ HANDLE_REG (UD_R_ST2,      "ST2",     80,    2)   
+ HANDLE_REG (UD_R_ST3,      "ST3",     80,    3)   
+ HANDLE_REG (UD_R_ST4,      "ST4",     80,    4)   
+ HANDLE_REG (UD_R_ST5,      "ST5",     80,    5)   
+ HANDLE_REG (UD_R_ST6,      "ST6",     80,    6)   
+ HANDLE_REG (UD_R_ST7,      "ST7",     80,    7)   
+
+ // MMX Registers, they are simply alias to x87 FPU registers
+ // MMX is for 64-bit integer operation, with 2 modes: 64-bit 
+ // mode and 32-bit mode
+ HANDLE_REG (UD_R_MM0,      "MM0",     64,    0)
+ HANDLE_REG (UD_R_MM1,      "MM1",     64,    1)
+ HANDLE_REG (UD_R_MM2,      "MM2",     64,    2)
+ HANDLE_REG (UD_R_MM3,      "MM3",     64,    3)
+ HANDLE_REG (UD_R_MM4,      "MM4",     64,    4)
+ HANDLE_REG (UD_R_MM5,      "MM6",     64,    5)
+ HANDLE_REG (UD_R_MM6,      "MM6",     64,    6)
+ HANDLE_REG (UD_R_MM7,      "MM7",     64,    7)
+
+ // SSE XMM Registers. They are for floating point SIMD.
+ HANDLE_REG (UD_R_XMM0,    "XMM0",      128,    0) 
+ HANDLE_REG (UD_R_XMM1,    "XMM1",      128,    1) 
+ HANDLE_REG (UD_R_XMM2,    "XMM2",      128,    2) 
+ HANDLE_REG (UD_R_XMM3,    "XMM3",      128,    3) 
+ HANDLE_REG (UD_R_XMM4,    "XMM4",      128,    4) 
+ HANDLE_REG (UD_R_XMM5,    "XMM5",      128,    5) 
+ HANDLE_REG (UD_R_XMM6,    "XMM6",      128,    6) 
+ HANDLE_REG (UD_R_XMM7,    "XMM7",      128,    7) 
+ HANDLE_REG (UD_R_XMM8,    "XMM8",      128,    8) 
+ HANDLE_REG (UD_R_XMM9,    "XMM9",      128,    9) 
+ HANDLE_REG (UD_R_XMM10,   "XMM10",     128,    10)  
+ HANDLE_REG (UD_R_XMM11,   "XMM11",     128,    11)  
+ HANDLE_REG (UD_R_XMM12,   "XMM12",     128,    12)  
+ HANDLE_REG (UD_R_XMM13,   "XMM13",     128,    13)  
+ HANDLE_REG (UD_R_XMM14,   "XMM14",     128,    14)  
+ HANDLE_REG (UD_R_XMM15,   "XMM15",     128,    15)  
+
+
+ // the following registers are unlikely accessed for address calculations   
+
+ // Segment Register. ucontext only defined them for 32-bit archtechture
+#if __x86_64__
+ HANDLE_REG (UD_R_ES,   "ES_NOT_DEFINED_64",    REG_INVALID,      REG_INVALID)
+ HANDLE_REG (UD_R_CS,   "CS_NOT_DEFINED_64",    REG_INVALID,      REG_INVALID)
+ HANDLE_REG (UD_R_SS,   "SS_NOT_DEFINED_64",    REG_INVALID,      REG_INVALID)
+ HANDLE_REG (UD_R_DS,   "DS_NOT_DEFINED_64",    REG_INVALID,      REG_INVALID)
+ HANDLE_REG (UD_R_FS,   "FS_NOT_DEFINED_64",    REG_INVALID,      REG_INVALID)
+ HANDLE_REG (UD_R_GS,   "GS_NOT_DEFINED_64",    REG_INVALID,      REG_INVALID)
+#else
+ HANDLE_REG (UD_R_ES,   "ES",    32,       REG_ES)
+ HANDLE_REG (UD_R_CS,   "CS",    32,       REG_CS)
+ HANDLE_REG (UD_R_SS,   "SS",    32,       REG_SS)
+ HANDLE_REG (UD_R_DS,   "DS",    32,       REG_DS)
+ HANDLE_REG (UD_R_FS,   "FS",    32,       REG_FS)
+ HANDLE_REG (UD_R_GS,   "GS",    32,       REG_GS)
+#endif
+
+
+ // Control Registers
+ HANDLE_REG (UD_R_CR0,      "CR0",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR1,      "CR1",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR2,      "CR2",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR3,      "CR3",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR4,      "CR4",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR5,      "CR5",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR6,      "CR6",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR7,      "CR7",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR8,      "CR8",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR9,      "CR9",      32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR10,     "CR10",     32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR11,     "CR11",     32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR12,     "CR12",     32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR13,     "CR13",     32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR14,     "CR14",     32,     REG_INVALID)
+ HANDLE_REG (UD_R_CR15,     "CR15",     32,     REG_INVALID)
+
+  // Debug Registers
+ HANDLE_REG (UD_R_DR0,      "DR0",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR1,      "DR1",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR2,      "DR2",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR3,      "DR3",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR4,      "DR4",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR5,      "DR5",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR6,      "DR6",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR7,      "DR7",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR8,      "DR8",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR9,      "DR9",      64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR10,     "DR10",     64,     REG_INVALID) 
+ HANDLE_REG (UD_R_DR11,     "DR11",     64,     REG_INVALID)
+ HANDLE_REG (UD_R_DR12,     "DR12",     64,     REG_INVALID) 
+ HANDLE_REG (UD_R_DR13,     "DR13",     64,     REG_INVALID) 
+ HANDLE_REG (UD_R_DR14,     "DR14",     64,     REG_INVALID) 
+ HANDLE_REG (UD_R_DR15,     "DR15",     64,     REG_INVALID)
+
+#ifdef HANDLE_REG
+#undef HANDLE_REG
+#endif
