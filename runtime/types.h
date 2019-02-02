@@ -75,8 +75,10 @@ struct __care_routine {
 typedef struct __care_routine care_routine_t;
 
 /**
- * md5 hash value
+ * md5 hash value, original md5 value is 128bits or 16 bytes.
+ * for human readable purpose, we print it to a hex string,
+ * which is 32 bytes
  */
-typedef char care_hash_t[16];
+typedef char care_hash_t[32];
 
 #endif

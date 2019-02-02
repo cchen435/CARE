@@ -5,15 +5,12 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileSystem.h>
 
+#include <iomanip>
 #include <set>
 
 #include "Care.h"
 
-#define RTB 1
-
-#if RTB
 #include "tb.h"
-#endif
 
 using namespace llvm;
 
@@ -58,18 +55,30 @@ std::string CarePass::getKey(DebugLoc loc) {
   std::string str = scope->getFilename();
   str += "/" + std::to_string(lineno) + "/" + std::to_string(colno);
 
-  char key[16];
+  unsigned char buf[16];
   mhash(mhd, str.c_str(), str.size());
-  mhash_deinit(mhd, key);
-  return std::string(key);
+  mhash_deinit(mhd, buf);
+  char key[32];
+  for (int i = 0; i < 16; i++) sprintf(&key[2 * i], "%02x", buf[i]);
+
+  std::string result(key);
+
+  DEBUG_WITH_TYPE("RTB", {
+    dbgs() << "getKey for File: " << scope->getFilename()
+           << ", Line: " << lineno << ", Col: " << colno
+           << "\n\tMD5 CStr: " << result << "\n\tMD5 Char: ";
+    for (int i = 0; i < 32; i++) fprintf(stdout, "%c", key[i]);
+    dbgs() << "\n";
+  });
+
+  return result;
 }
 
 bool CarePass::runOnModule(Module &M) {
   initialize(M);
 
-#if RTB
+  // the recovery table holding the recovery kernel for MemAccInst
   pb::Table *rtb = care_tb_create();
-#endif
 
   Module::FunctionListType &funcs = M.getFunctionList();
   for (Module::FunctionListType::iterator it = funcs.begin(), end = funcs.end();
@@ -104,14 +113,19 @@ bool CarePass::runOnModule(Module &M) {
       else
         loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
 
-#if RTB
       // build the recovery kernel table
       std::string key = getKey(loc);
       std::vector<std::string> pnames;
       for (auto it = params.begin(); it != params.end(); it++)
         pnames.push_back(getOrCreateValueName(*it));
+
+      DEBUG_WITH_TYPE("RTB", {
+        dbgs() << "Create RTB Entry: "
+               << "\n\tKey: " << key << "\n\tKernel: " << kernel->getName()
+               << "\n\tParams: ";
+        for (unsigned i = 0; i < pnames.size(); i++) dbgs() << pnames[i] << " ";
+      });
       care_tb_add_record(rtb, key, kernel, pnames);
-#endif
 
       // promote the debug data to all of its binary users
       // since in x86 architecture, the binary operation could
@@ -138,12 +152,11 @@ bool CarePass::runOnModule(Module &M) {
   WriteBitcodeToFile(CareM, OS);
   OS.flush();
 
-#if RTB
   // save recovery table
   FileName = program + ".tb";
   care_tb_save(FileName, rtb);
 
-  DEBUG_WITH_TYPE("rtb", {
+  DEBUG_WITH_TYPE("RTB", {
     dbgs() << "Recovery Table (" << FileName << "): \n";
     care_tb_print(rtb);
     pb::Table *tb = care_tb_load((char *)FileName.c_str());
@@ -152,9 +165,6 @@ bool CarePass::runOnModule(Module &M) {
   });
 
   care_tb_release(rtb);
-
-#endif
-
   return true;
 }
 

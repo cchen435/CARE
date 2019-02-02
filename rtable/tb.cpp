@@ -120,12 +120,11 @@ static pb::Type *createPBBaseTy(llvm::Type *ty) {
   if (ty->isIntegerTy()) {
     retval->set_width(ty->getIntegerBitWidth());
   }
-#if 1
-  llvm::dbgs() << "[createPBBaseTy] create type for : " << *ty
-               << "\n\tSingleValueType: " << ty->isSingleValueType()
-               << "\n\treturn: " << retval->id() << "(" << getTypeStr(retval)
-               << ")\n";
-#endif
+  DEBUG_WITH_TYPE(
+      "RTB", llvm::dbgs() << "[createPBBaseTy] create type for : " << *ty
+                          << "\n\tSingleValueType: " << ty->isSingleValueType()
+                          << "\n\treturn: " << retval->id() << "("
+                          << getTypeStr(retval) << ")\n");
   return retval;
 }
 
@@ -143,12 +142,11 @@ pb::Type *createPBPointerTy(llvm::PointerType *ty) {
   else
     pointee = createPBBaseTy(sub);
   retval->set_allocated_pointeety(pointee);
-#if 1
-  llvm::dbgs() << "[createPBPointerTy] create type for : " << *ty
-               << "\n\tSingleValueType: " << ty->isSingleValueType()
-               << "\n\treturn: " << retval->id() << "(" << getTypeStr(retval)
-               << ")\n";
-#endif
+  DEBUG_WITH_TYPE(
+      "RTB", llvm::dbgs() << "[createPBPointerTy] create type for : " << *ty
+                          << "\n\tSingleValueType: " << ty->isSingleValueType()
+                          << "\n\treturn: " << retval->id() << "("
+                          << getTypeStr(retval) << ")\n");
   return retval;
 }
 
@@ -166,12 +164,11 @@ pb::Type *createPBType(llvm::Type *Ty) {
     llvm::errs() << "Unhandled/Unexpected Type: " << *Ty;
     exit(EXIT_FAILURE);
   }
-#if 1
-  llvm::dbgs() << "[createPBType] create type for : " << *Ty
-               << "\n\tSingleValueType: " << Ty->isSingleValueType()
-               << "\n\treturn: " << retval->id() << "(" << getTypeStr(retval)
-               << ")\n\n\n";
-#endif
+  DEBUG_WITH_TYPE(
+      "RTB", llvm::dbgs() << "[createPBType] create type for : " << *Ty
+                          << "\n\tSingleValueType: " << Ty->isSingleValueType()
+                          << "\n\treturn: " << retval->id() << "("
+                          << getTypeStr(retval) << ")\n\n\n");
   return retval;
 }
 
@@ -224,25 +221,15 @@ void care_tb_print_record(const pb::Record *record) {
     params.append(record->parameters(i));
     if (i < n_params - 1) params.append(", ");
   }
-
-#if 0
-  std::cout << "key(len = " << key.size() << "): ";
-  for (unsigned i = 0; i < key.size(); i++) {
-    uint8_t high = key.c_str()[i] >> 4;
-    uint8_t low = key[i] & 15;
-    std::cout << std::setw(1) << std::hex << std::uppercase << high << low;
-  }
-  std::cout << "\tFuncTy: " << FuncTyStr << "\tParams: " << params << "\n";
-#else
-  std::cout << "key: " << key << "\tFuncTy: " << FuncTyStr
-            << "\tParams: " << params << "\n";
-#endif
+  std::cout << "\tKey: " << key << "\n\tFuncTy: " << FuncTyStr
+            << "\n\tParams: " << params << "\n\n";
 }
 
 void care_tb_print(pb::Table *table) {
   int i, n_records = table->records_size();
-  std::cout << "Num. of records: " << n_records << "\n";
+  std::cout << "Recovery Table (Num. of records: " << n_records << ")\n";
   for (i = 0; i < n_records; i++) {
+    std::cout << "Record " << i << ": \n";
     care_tb_print_record(&(table->records(i)));
   }
 }

@@ -104,11 +104,14 @@ static int care_util_is_equal(care_hash_t key1, care_hash_t key2) {
  * value has fixed 128-bits in size. the hash value is returned through key
  */
 static void care_util_hash(char *str, care_hash_t key) {
+  unsigned i = 0;
+  unsigned char buf[16];
   MHASH mhd;
   mhd = mhash_init(MHASH_MD5);
   assert(mhd != MHASH_FAILED);
   mhash(mhd, str, strlen(str));
-  mhash_deinit(mhd, key);
+  mhash_deinit(mhd, buf);
+  for (i = 0; i < 16; i++) sprintf(&key[2 * i], "%02x", buf[i]);
 }
 
 /**
@@ -212,7 +215,7 @@ void care_util_finish(care_context_t *context) {
  * and  for SIGFPE, it could be either register or memory location )
  */
 care_method_t care_util_diagnose(int signo, care_context_t *context,
-                       care_target_t *target) {
+                                 care_target_t *target) {
   ud_t ud_obj;       // the udis86 object
   ud_type_t ud_reg;  // the register naming in udis namespace
   int libc_reg;      // the register naming in libc namespace
