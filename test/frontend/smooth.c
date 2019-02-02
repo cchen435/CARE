@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "care.h"
+
 int smooth(int *igrid, int *mtheta, int *itran, double *phism, double *phitmp,
            double *phi, int mpsi) {
 #if 0
@@ -59,6 +61,9 @@ int main(int argc, char *argv[]) {
     int mpsi = atoi(argv[1]);
     int *igrid, *mtheta, *itran;
     double *phism, *phitmp, *phi;
+    
+    care_user_init();
+
     igrid = (int *) malloc(sizeof(int) * mpsi);
     mtheta = (int *) malloc(sizeof(int) * mpsi);
     itran = (int *) malloc(sizeof(int) * mpsi);

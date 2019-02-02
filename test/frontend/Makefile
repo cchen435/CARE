@@ -1,21 +1,24 @@
-objects: static.ll sum.ll smooth.ll
+objects: static.ll smooth.ll
 all: $(objects)
 
 platform := $(shell uname)
 
 ifeq ($(platform), Darwin)
-	LLVMRoot = '/opt/llvm-beacon-3.8.0/'
+	LLVMRoot = '/opt/llvm-3.8.0/'
 endif
 
 ifeq ($(platform), Linux) 
 	LLVMRoot = '/opt/llvm-3.8.0/'
 endif
 
+CARE=/home/cchen/Documents/Projects/CARE/src
+
 CC = $(LLVMRoot)/bin/clang
 
 OPT = $(LLVMRoot)/bin/opt
 
-CFLAGS= -S -emit-llvm
+CFLAGS= -g -S -emit-llvm -I$(CARE)/include
+LDFLAGS=-L$(CARE)/build/runtime -lcare
 
 %.ll: %.c
 	$(CC) $(CFLAGS) -o $@ $<
@@ -24,7 +27,7 @@ CFLAGS= -S -emit-llvm
 care: $(objects)
 
 %.ll: %.ll
-	$(OPT) -debug -load ../build/src/libCARE.so -care $@ -S -o $@
+	$(OPT) -debug -load $(CARE)/src/build/frontend/libCARE.so -care $@ -S -o $@
 
 clean:
 	rm *.ll

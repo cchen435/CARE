@@ -45,7 +45,7 @@ static int care_util_is_in_library(void *addr) {
   return 0;
 }
 
-static int care_until_unwind(int steps) {
+static int care_util_unwind(int steps) {
   unw_cursor_t cursor;
   unw_context_t unw_ctx;
 #if DEBUG
@@ -86,7 +86,7 @@ void care_util_rollback(unw_cursor_t *cursor) {
     care_ud_disasm_instruction(&obj, (uint8_t *)pc);
     if (UD_Icall == ud_insn_mnemonic(&obj)) break;
   }
-  uwn_set_reg(cursor, UNW_REG_IP, pc);
+  unw_set_reg(cursor, UNW_REG_IP, pc);
 }
 
 //==-------------------- hash related routines -----------------------==//
@@ -165,7 +165,7 @@ void care_util_init(care_context_t *context, siginfo_t *sig_info,
   // initialize dwarf library
   context->dwarf = care_dw_open(program_invocation_name);
 
-  fprintf(stderr, "care is to recover %s [pc: %llx]\n", __progname,
+  fprintf(stderr, "CARE is to recover %s [pc: 0x%llx]\n", __progname,
           context->pc);
 
 // loading recovery table

@@ -6,10 +6,23 @@ add_library(care SHARED
     util.c
 )
 
-find_library(UDIS_LIB udis86)
-message("UD: " ${UDIS_LIB})
+find_library(LIBUDIS udis86)
+message("libudis86: " ${LIBUDIS})
 
-find_library(DWARF_LIB dwarf)
-message("dwarf: " ${DWARF_LIB})
+find_library(LIBDWARF dwarf)
+message("libdwarf: " ${LIBDWARF})
 
-target_link_libraries(care ${UDIS_LIB} ${DWARF_LIB})
+find_library(LIBMHASH mhash)
+message("libmhash: " ${LIBMHASH})
+
+find_library(LIBFFI ffi)
+message("libffi: " ${LIBFFI})
+
+find_library(LIBUNWIND unwind)
+message("libunwind: " ${LIBUNWIND})
+
+link_directories(
+    ${LLVM_LIBRARY_DIRS}
+    ${CARE_SOURCE_DIR}/rtable
+)
+target_link_libraries(care ${UDIS_LIB} ${DWARF_LIB} ${MHASH_LIB} ${LIBUNWIND} rtable LLVMCore LLVMSupport)
