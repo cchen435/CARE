@@ -230,19 +230,19 @@ void AddDescriptorsImpl() {
       "pb.TypeB\016\n\014SubclassData\"R\n\nFunctionTy\022\032\n"
       "\010ReturnTy\030\001 \002(\0132\010.pb.Type\022\r\n\005fname\030\002 \002(\t"
       "\022\031\n\007ParamTy\030\003 \003(\0132\010.pb.Type\"I\n\006Record\022\013\n"
-      "\003key\030\001 \002(\t\022\036\n\006FuncTy\030\002 \002(\0132\016.pb.Function"
+      "\003key\030\001 \002(\014\022\036\n\006FuncTy\030\002 \002(\0132\016.pb.Function"
       "Ty\022\022\n\nparameters\030\003 \003(\t\"$\n\005Table\022\033\n\007recor"
-      "ds\030\001 \003(\0132\n.pb.Record*\215\002\n\006TypeID\022\014\n\010HalfT"
-      "yID\020\001\022\r\n\tFloatTyID\020\002\022\016\n\nDoubleTyID\020\003\022\020\n\014"
-      "X86_FP80TyID\020\004\022\r\n\tFP128TyID\020\005\022\021\n\rPPC_FP1"
-      "28TyID\020\006\022\r\n\tLabelTyID\020\007\022\020\n\014MetadataTyID\020"
-      "\010\022\017\n\013X86_MMXTyID\020\t\022\r\n\tTokenTyID\020\n\022\017\n\013Int"
-      "egerTyID\020\013\022\020\n\014FunctionTyID\020\014\022\016\n\nStructTy"
-      "ID\020\r\022\r\n\tArrayTyID\020\016\022\017\n\013PointerTyID\020\017\022\016\n\n"
-      "VectorTyID\020\020"
+      "ds\030\001 \003(\0132\n.pb.Record*\233\002\n\006TypeID\022\014\n\010VoidT"
+      "yID\020\000\022\014\n\010HalfTyID\020\001\022\r\n\tFloatTyID\020\002\022\016\n\nDo"
+      "ubleTyID\020\003\022\020\n\014X86_FP80TyID\020\004\022\r\n\tFP128TyI"
+      "D\020\005\022\021\n\rPPC_FP128TyID\020\006\022\r\n\tLabelTyID\020\007\022\020\n"
+      "\014MetadataTyID\020\010\022\017\n\013X86_MMXTyID\020\t\022\r\n\tToke"
+      "nTyID\020\n\022\017\n\013IntegerTyID\020\013\022\020\n\014FunctionTyID"
+      "\020\014\022\016\n\nStructTyID\020\r\022\r\n\tArrayTyID\020\016\022\017\n\013Poi"
+      "nterTyID\020\017\022\016\n\nVectorTyID\020\020"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 692);
+      descriptor, 706);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "care.proto", &protobuf_RegisterTypes);
 }
@@ -265,6 +265,7 @@ const ::google::protobuf::EnumDescriptor* TypeID_descriptor() {
 }
 bool TypeID_IsValid(int value) {
   switch (value) {
+    case 0:
     case 1:
     case 2:
     case 3:
@@ -621,7 +622,7 @@ Type::Type(const Type& from)
 }
 
 void Type::SharedCtor() {
-  id_ = 1;
+  id_ = 0;
   clear_has_SubclassData();
 }
 
@@ -683,7 +684,7 @@ void Type::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  id_ = 1;
+  id_ = 0;
   clear_SubclassData();
   _has_bits_.Clear();
   _internal_metadata_.Clear();
@@ -1507,16 +1508,12 @@ bool Record::MergePartialFromCodedStream(
     tag = p.first;
     if (!p.second) goto handle_unusual;
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required string key = 1;
+      // required bytes key = 1;
       case 1: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(10u /* 10 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
                 input, this->mutable_key()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
-            this->key().data(), static_cast<int>(this->key().length()),
-            ::google::protobuf::internal::WireFormat::PARSE,
-            "pb.Record.key");
         } else {
           goto handle_unusual;
         }
@@ -1579,13 +1576,9 @@ void Record::SerializeWithCachedSizes(
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  // required string key = 1;
+  // required bytes key = 1;
   if (cached_has_bits & 0x00000001u) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
-      this->key().data(), static_cast<int>(this->key().length()),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "pb.Record.key");
-    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+    ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
       1, this->key(), output);
   }
 
@@ -1620,14 +1613,10 @@ void Record::SerializeWithCachedSizes(
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  // required string key = 1;
+  // required bytes key = 1;
   if (cached_has_bits & 0x00000001u) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
-      this->key().data(), static_cast<int>(this->key().length()),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "pb.Record.key");
     target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+      ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
         1, this->key(), target);
   }
 
@@ -1661,9 +1650,9 @@ size_t Record::RequiredFieldsByteSizeFallback() const {
   size_t total_size = 0;
 
   if (has_key()) {
-    // required string key = 1;
+    // required bytes key = 1;
     total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::StringSize(
+      ::google::protobuf::internal::WireFormatLite::BytesSize(
         this->key());
   }
 
@@ -1686,9 +1675,9 @@ size_t Record::ByteSizeLong() const {
         _internal_metadata_.unknown_fields());
   }
   if (((_has_bits_[0] & 0x00000003) ^ 0x00000003) == 0) {  // All required fields are present.
-    // required string key = 1;
+    // required bytes key = 1;
     total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::StringSize(
+      ::google::protobuf::internal::WireFormatLite::BytesSize(
         this->key());
 
     // required .pb.FunctionTy FuncTy = 2;

@@ -75,6 +75,7 @@ template<> ::pb::Type_StructTy* Arena::CreateMaybeMessage<::pb::Type_StructTy>(A
 namespace pb {
 
 enum TypeID {
+  VoidTyID = 0,
   HalfTyID = 1,
   FloatTyID = 2,
   DoubleTyID = 3,
@@ -93,7 +94,7 @@ enum TypeID {
   VectorTyID = 16
 };
 bool TypeID_IsValid(int value);
-const TypeID TypeID_MIN = HalfTyID;
+const TypeID TypeID_MIN = VoidTyID;
 const TypeID TypeID_MAX = VectorTyID;
 const int TypeID_ARRAYSIZE = TypeID_MAX + 1;
 
@@ -680,7 +681,7 @@ class Record : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   const ::google::protobuf::RepeatedPtrField< ::std::string>& parameters() const;
   ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_parameters();
 
-  // required string key = 1;
+  // required bytes key = 1;
   bool has_key() const;
   void clear_key();
   static const int kKeyFieldNumber = 1;
@@ -690,7 +691,7 @@ class Record : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   void set_key(::std::string&& value);
   #endif
   void set_key(const char* value);
-  void set_key(const char* value, size_t size);
+  void set_key(const void* value, size_t size);
   ::std::string* mutable_key();
   ::std::string* release_key();
   void set_allocated_key(::std::string* key);
@@ -898,7 +899,7 @@ inline void Type::clear_has_id() {
   _has_bits_[0] &= ~0x00000001u;
 }
 inline void Type::clear_id() {
-  id_ = 1;
+  id_ = 0;
   clear_has_id();
 }
 inline ::pb::TypeID Type::id() const {
@@ -1244,7 +1245,7 @@ FunctionTy::paramty() const {
 
 // Record
 
-// required string key = 1;
+// required bytes key = 1;
 inline bool Record::has_key() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
@@ -1281,7 +1282,7 @@ inline void Record::set_key(const char* value) {
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
   // @@protoc_insertion_point(field_set_char:pb.Record.key)
 }
-inline void Record::set_key(const char* value, size_t size) {
+inline void Record::set_key(const void* value, size_t size) {
   set_has_key();
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
