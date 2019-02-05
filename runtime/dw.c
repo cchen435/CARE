@@ -5,7 +5,9 @@
 #include <gelf.h>
 #include <libdwarf.h>
 
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
 #include <signal.h>
 
 #include <stdio.h>
@@ -19,6 +21,74 @@
 // ---------------- declaration of helper functions ----------------
 Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC);
 void care_dw_print_die(care_dwarf_t handler, Dwarf_Die die, int indent);
+
+char *care_dw_get_form_class_str(enum Dwarf_Form_Class class) {
+  char *ret;
+  switch (class) {
+    case DW_FORM_CLASS_UNKNOWN:
+      ret = "DW_FORM_CLASS_UNKNOWN";
+      break;
+    case DW_FORM_CLASS_ADDRESS:
+      ret = "DW_FORM_CLASS_ADDRESS";
+      break;
+    case DW_FORM_CLASS_BLOCK:
+      ret = "DW_FORM_CLASS_BLOCK";
+      break;
+    case DW_FORM_CLASS_CONSTANT:
+      ret = "DW_FORM_CLASS_CONSTANT";
+      break;
+    case DW_FORM_CLASS_EXPRLOC:
+      ret = "DW_FORM_CLASS_EXPRLOC";
+      break;
+    case DW_FORM_CLASS_FLAG:
+      ret = "DW_FORM_CLASS_FLAG";
+      break;
+    case DW_FORM_CLASS_LINEPTR:
+      ret = "DW_FORM_CLASS_LINEPTR";
+      break;
+    case DW_FORM_CLASS_LOCLISTPTR:
+      ret = "DW_FORM_CLASS_LOCLISTPTR";
+      break;
+    case DW_FORM_CLASS_MACPTR:
+      ret = "DW_FORM_CLASS_MACPTR";
+      break;
+    case DW_FORM_CLASS_RANGELISTPTR:
+      ret = "DW_FORM_CLASS_RANGELISTPTR";
+      break;
+    case DW_FORM_CLASS_REFERENCE:
+      ret = "DW_FORM_CLASS_REFERENCE";
+      break;
+    case DW_FORM_CLASS_STRING:
+      ret = "DW_FORM_CLASS_STRING";
+      break;
+    case DW_FORM_CLASS_FRAMEPTR:
+      ret = "DW_FORM_CLASS_FRAMPTR";
+      break;
+    case DW_FORM_CLASS_MACROPTR:
+      ret = "DW_FORM_CLASS_MACROPTR";
+      break;
+    case DW_FORM_CLASS_ADDRPTR:
+      ret = "DW_FORM_CLASS_ADDRPTR";
+      break;
+    case DW_FORM_CLASS_LOCLIST:
+      ret = "DW_FORM_CLASS_LOCLIST";
+      break;
+    case DW_FORM_CLASS_LOCLISTSPTR:
+      ret = "DW_FORM_CLASS_LOCLISTSPTR";
+      break;
+    case DW_FORM_CLASS_RNGLIST:
+      ret = "DW_FORM_CLASS_RNGLIST";
+      break;
+    case DW_FORM_CLASS_RNGLISTSPTR:
+      ret = "DW_FORM_CLASS_RNGLISTSPTR";
+      break;
+    case DW_FORM_CLASS_STROFFSETSPTR:
+      ret = "DW_FORM_CLASS_STROFFSETSPTR";
+      break;
+    default:
+      break;
+  }
+}
 
 //------------------ local function definition --------------------
 /**
@@ -82,17 +152,12 @@ static int care_dw_resolve_reg_name(int dw_reg_index) {
   return map[dw_reg_index];
 }
 
-static void *care_dw_eval_op_value(care_context_t *env, Dwarf_Locdesc_c desc,
-                                   Dwarf_Unsigned num_exprs) {
+static void *care_dw_eval_op_value(care_context_t *env, Dwarf_Locdesc_c desc) {
   Dwarf_Small opcode;
   Dwarf_Unsigned op1, op2, op3, offset_for_branch;
   Dwarf_Error error;
   const char *opcode_str;
   int dw_reg, ucontext_reg;
-
-  if (num_exprs > 1) {
-    errx(EXIT_FAILURE, "composit location description is not handled now");
-  }
 
   dwarf_get_location_op_value_c(desc, 0, &opcode, &op1, &op2, &op3,
                                 &offset_for_branch, &error);
@@ -221,9 +286,11 @@ static Dwarf_Die care_dw_search_var(care_dwarf_t dwarf, Dwarf_Die root,
     return root;
   }
 
-  // get the child
-  retval = dwarf_child(root, &child, &error);
-  tmp = care_dw_search_var(dwarf, child, varname);
+  // search the child if it has, otherwise return NULL
+  if (retval = dwarf_child(root, &child, &error) == DW_DLV_OK)
+    tmp = care_dw_search_var(dwarf, child, varname);
+  else
+    return NULL;
 
   curr = child;
 
@@ -453,6 +520,10 @@ void care_dw_print_die(care_dwarf_t handler, Dwarf_Die die, int indent) {
 
     // get attribute value based on its form class
     dwarf_get_version_of_die(die, &version, &offset_size);
+#ifdef DEBUG_DW
+    fprintf(stderr, "Dwarf Version: %d\n", version);
+#endif
+
     form_class = dwarf_get_form_class(version, attr, offset_size, form);
     switch (form_class) {
       case DW_FORM_CLASS_STRING:
@@ -532,8 +603,8 @@ void care_dw_print_die(care_dwarf_t handler, Dwarf_Die die, int indent) {
         break;
       default:
         dwarf_get_FORM_name(form, &form_name);
-        fprintf(stderr, "%*c%s: %s(%s)\n", indent + 2, ' ', attr_name,
-                at_val_str, form_name);
+        fprintf(stderr, "%*c%s: %s(%s, %s)\n", indent + 2, ' ', attr_name,
+                at_val_str, form_name, care_dw_get_form_class_str(form_class));
     }
 
     dwarf_dealloc(handler.dwarf_handle, (void *)attr_name, DW_DLA_STRING);
@@ -605,27 +676,101 @@ int care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC, char **ret_file,
   while ((retval = care_dw_get_next_cu_die(dwarf, &cu_die)) == DW_DLV_OK) {
     dwarf_srclines(cu_die, &linebuf, &linecount, &error);
 
-#if PRINT_LINE_TABLE
+#ifdef DEBUG_LINE_TABLE
     care_dw_print_line_table(dwarf, cu_die);
 #endif
 
     for (i = 0; i < linecount; i++) {
       dwarf_lineaddr(linebuf[i], &lineaddr, &error);
-      // TODO: (to improve) we did the exact address matching here. It may
-      // miss some instructions, since the line table does not contain info
-      // for all address
+
       if (!retval && lineaddr == PC) {
         if (ret_file) dwarf_linesrc(linebuf[i], ret_file, &error);
         if (ret_line) dwarf_lineno(linebuf[i], ret_line, &error);
         if (ret_column) dwarf_lineoff_b(linebuf[i], ret_column, &error);
         retval = 1;
+      } else if (!retval && lineaddr > PC) {
+        if (ret_file) dwarf_linesrc(linebuf[i - 1], ret_file, &error);
+        if (ret_line) dwarf_lineno(linebuf[i - 1], ret_line, &error);
+        if (ret_column) dwarf_lineoff_b(linebuf[i - 1], ret_column, &error);
+        retval = 1;
       }
       dwarf_dealloc(dwarf.dwarf_handle, linebuf[i], DW_DLA_LINE);
+      if (retval) break;
     }
     dwarf_dealloc(dwarf.dwarf_handle, linebuf, DW_DLA_LIST);
     dwarf_dealloc(dwarf.dwarf_handle, cu_die, DW_DLA_DIE);
+    if (retval) break;
   }
   return retval;
+}
+
+static int care_dw_get_locdesc(care_context_t *env, Dwarf_Die die,
+                               Dwarf_Locdesc_c *locdesc) {
+  int retval, found = DW_DLV_NO_ENTRY;
+  Dwarf_Error error;
+  Dwarf_Addr lopc, hipc;
+  Dwarf_Attribute attr;
+
+  // get the attribute descriptor for DW_AT_location attribute
+  retval = dwarf_attr(die, DW_AT_location, &attr, &error);
+  if (retval == DW_DLV_NO_ENTRY)
+    errx(EXIT_FAILURE, "NO location attribution found for the variable");
+
+  Dwarf_Loc_Head_c list_head;
+  Dwarf_Unsigned i, list_cnt, entry_cnt, expr_offset, locdesc_offset;
+  Dwarf_Small source, lle;
+  retval = dwarf_get_loclist_c(attr, &list_head, &list_cnt, &error);
+
+  if (retval != DW_DLV_OK) errx(EXIT_FAILURE, "Failed to get location list\n");
+
+  for (i = 0; i < list_cnt; i++) {
+    /**
+     * use source and lle to determine the kind of entry
+     * need to interpret the lopc and hipc based on lle value.
+     * Sometimes they are target address, and sometimes an index into
+     * .debug_addr or even a length.
+     * entry_cnt will be more than zero only when there is a set of location
+     * operators
+     */
+    retval = dwarf_get_locdesc_entry_c(list_head, i, &lle, &lopc, &hipc,
+                                       &entry_cnt, locdesc, &source,
+                                       &expr_offset, &locdesc_offset, &error);
+
+    if (retval != DW_DLV_OK) continue;
+    if (source != 1)
+      errx(EXIT_FAILURE,
+           "Unsupported location description(source: 0 location expression, 1. "
+           "DWARF2,3,4 loclist form, 2: DWARF5 loclist form). source=%d\n",
+           source);
+
+    // interpret the lopc and hipc based on lle value
+    switch (lle) {
+      case DW_LLE_offset_pair: {
+        Dwarf_Die func = care_dw_get_func(env->dwarf, env->pc);
+        Dwarf_Addr base;
+        retval = dwarf_lowpc(func, &base, &error);
+        if (retval != DW_DLV_OK) {
+          char *name;
+          dwarf_diename(func, &name, &error);
+          errx(EXIT_FAILURE, "Failed to get base addr from DIE: %s\n", name);
+        }
+        lopc += base;
+        hipc += base;
+        break;
+      }
+      default:
+        errx(EXIT_FAILURE,
+             "libcare doesn't handle this addr case (DWARF2,3,4): lle=%d\n",
+             lle);
+    }
+    if (env->pc < hipc && env->pc >= lopc) {
+      // found the loc description
+      found = DW_DLV_OK;
+      break;
+    }
+  }
+  dwarf_loc_head_c_dealloc(list_head);
+  return found;
 }
 
 /**
@@ -635,159 +780,17 @@ int care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC, char **ret_file,
  */
 void *care_dw_get_var_loc(care_context_t *env, char *varname) {
   int retval;
-  void *location;
-  Dwarf_Die die;
-  Dwarf_Error error;
-
-  // for location list
-  Dwarf_Attribute loc_attr;
-  Dwarf_Loc_Head_c loc_list_head;
-  Dwarf_Unsigned i, loc_list_cnt;
-
-  // for location description
-  Dwarf_Small source, lle;
-  Dwarf_Addr lopc, hipc;
+  Dwarf_Die var_die;
   Dwarf_Locdesc_c locdesc_entry;
-  Dwarf_Unsigned expr_offset, locdesc_offset, locdesc_cnt;
 
   // get the die of the variable
-  die = care_dw_get_var_die(env->dwarf, env->pc, varname);
-
-  // get the attribute descriptor for DW_AT_location attribute
-  retval = dwarf_attr(die, DW_AT_location, &loc_attr, &error);
-  if (retval == DW_DLV_NO_ENTRY) {
-    errx(EXIT_FAILURE, "NO location attribution found for the variable");
-  }
-
-  retval = dwarf_get_loclist_c(loc_attr, &loc_list_head, &loc_list_cnt, &error);
-
-  for (i = 0; i < loc_list_cnt; i++) {
-    retval = dwarf_get_locdesc_entry_c(loc_list_head, i, &lle, &lopc, &hipc,
-                                       &locdesc_cnt, &locdesc_entry, &source,
-                                       &expr_offset, &locdesc_offset, &error);
-    if (retval != DW_DLV_OK) continue;
-
-    if (source == 0) {
-      // just a simple location description, lle, lopc and hipc is useless
-      break;
-    } else if (source == 1) {
-      // a location list entry in DWARF2,3,4 loclist form
-      switch (lle) {
-          // interpret the lopc and hipc based on lle value
-        case DW_LLE_startx_length:
-        case DW_LLE_start_length:
-          hipc += lopc;
-          break;
-        case DW_LLE_startx_endx:
-        case DW_LLE_start_end:
-          break;
-        default:
-          errx(EXIT_FAILURE,
-               "libcare doesn't handle this address case (DWARF2,3,4): %d\n",
-               lle);
-      }
-
-      if (env->pc < hipc && env->pc > lopc) break;
-    } else if (source == 2) {
-      // a location list entry in DWARF5 split-dwarf location entry form
-      switch (lle) {
-          // interpret the lopc and hipc based on lle value
-        case DW_LLE_startx_length:
-        case DW_LLE_start_length:
-          hipc += lopc;
-          break;
-        case DW_LLE_startx_endx:
-        case DW_LLE_start_end:
-          break;
-        default:
-          errx(EXIT_FAILURE,
-               "libcare doesn't handle this address case (DWARF5): %d\n", lle);
-      }
-      if (env->pc < hipc && env->pc > lopc) break;
-    } else {
-      errx(EXIT_FAILURE, "Unknown source for dwarf_get_locdesc_entry_c\n");
-    }
-  }
-
-  if (locdesc_cnt == 0) {
-    errx(EXIT_FAILURE, "No location expression operator is found\n");
-  }
-
-  location = care_dw_eval_op_value(env, locdesc_entry, locdesc_cnt);
-
-  dwarf_loc_head_c_dealloc(loc_list_head);
-
-  return location;
+  var_die = care_dw_get_var_die(env->dwarf, env->pc, varname);
+#ifdef DEBUG
+  fprintf(stderr, "The Die for %s: \n", varname);
+  care_dw_print_die(env->dwarf, var_die, 0);
+#endif
+  retval = care_dw_get_locdesc(env, var_die, &locdesc_entry);
+  if (retval != DW_DLV_OK)
+    errx(EXIT_FAILURE, "No location is found for variable %s\n", varname);
+  return care_dw_eval_op_value(env, locdesc_entry);
 }
-
-#if 0
-
-
-int get_glibc_reg_idx(int reg) {
-  int ret;
-  switch (reg) {
-  case DW_OP_reg6:
-    ret = REG_RBP;
-  default:
-    errx(EXIT_FAILURE, "Unknown register %x", reg);
-  }
-
-  return ret;
-}
-
-long long get_loc_of_variable(Dwarf_Die die, gregset_t gregs) {
-  Dwarf_Signed lcnt;
-  Dwarf_Bool hasloc;
-  Dwarf_Error error;
-  Dwarf_Locdesc *llbuf;
-  int i, res;
-  dwarf_hasattr(die, DW_AT_location, &hasloc, &error);
-  if (!hasloc) {
-    errx(EXIT_FAILURE, "NO location attribution found for the variable");
-  }
-#if DEBUG
-  printf("get DW_AT_location value\n");
-#endif
-  Dwarf_Attribute attr;
-  dwarf_attr(die, DW_AT_location, &attr, &error);
-  res = dwarf_loclist(attr, &llbuf, &lcnt, &error);
-  if (res != DW_DLV_OK)
-    errx(EXIT_FAILURE, "dwarf_loclist failed.");
-
-#if DEBUG
-  printf("Found %lld Locdesc\n", lcnt);
-#endif
-  assert(lcnt == 1); // currently we hope there is only one location for
-                     // variable in the future we will extend it to serch the
-                     // correct one based on PC addr
-
-#if DEBUG
-  printf("There are %u locs\n", llbuf[0].ld_cents);
-#endif
-  assert(llbuf[0].ld_cents == 1);
-  // currently we hope there is only one location for variable
-  // in the future we will extend it to serch the correct one based
-  // on PC addr
-  Dwarf_Loc *loc = llbuf[0].ld_s;
-  Dwarf_Addr addr;
-  char *op_name;
-  switch (loc->lr_atom) {
-  case DW_OP_fbreg:
-#if DEBUG
-    printf("RBP: %llx, number: %llx, number2: %llx, Offset: %llx \n",
-           gregs[REG_RBP], loc->lr_number, loc->lr_number2, loc->lr_offset);
-#endif
-    addr = gregs[REG_RBP] + loc->lr_number;
-    break;
-  default:
-    dwarf_get_OP_name(loc->lr_atom, &op_name);
-    errx(EXIT_FAILURE, "Unhandled operator: %s\n", op_name);
-  }
-#if DEBUG
-  printf("variable addr: %llx\n", addr);
-#endif
-
-  return addr;
-}
-
-#endif

@@ -25,4 +25,5 @@ link_directories(
     ${LLVM_LIBRARY_DIRS}
     ${CARE_SOURCE_DIR}/rtable
 )
+set(CMAKE_C_FLAGS "-g -DDEBUG")
 target_link_libraries(care ${UDIS_LIB} ${DWARF_LIB} ${MHASH_LIB} ${LIBUNWIND} rtable LLVMCore LLVMSupport)

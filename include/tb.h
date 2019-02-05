@@ -12,7 +12,6 @@
 #include "pb.h"
 #endif
 
-
 // general type definition
 #ifdef __cplusplus
 extern "C" {
@@ -64,14 +63,13 @@ void care_tb_print(pb::Table *tb);
  * care_tb_add_record: insert an record to the table
  */
 int care_tb_add_record(pb::Table *table, std::string key,
-                       llvm::Function *FuncTy,
-                       std::vector<std::string> params);
+                       llvm::Function *FuncTy, std::vector<std::string> params);
 
 /**
  * retrive the config information about the recovery routine
  */
-int care_tb_search(pb::Table *table, std::string key, const pb::FunctionTy **FuncTy,
-                   char **params, int *n_params);
+int care_tb_search(pb::Table *table, std::string key, pb::FunctionTy &FuncTy,
+                   char ***params, int *n_params);
 
 /**
  * load a table from file
@@ -89,7 +87,7 @@ enum TypeID care_tb_get_param_type_id(pb::FunctionTy *FuncTy, int param);
 int care_tb_get_param_type_width(pb::FunctionTy *FuncTy, int param);
 const char *care_tb_get_function_name(pb::FunctionTy *FuncTy);
 
-#endif // !__cplusplus C code interface only
+#endif  // !__cplusplus C code interface only
 
 #ifdef __cplusplus
 extern "C" {

@@ -15,6 +15,9 @@
 static std::string getBaseTyStr(const pb::Type *Ty) {
   std::string ret;
   switch (Ty->id()) {
+    case pb::VoidTyID:
+      ret = "void";
+      break;
     case pb::ArrayTyID:
       ret = getBaseTyStr(&Ty->arrayelemty());
       ret.append("[]");
@@ -82,6 +85,7 @@ static std::string getTypeStr(const pb::Type *Ty) {
 }
 
 static std::string getFunctionTyStr(const pb::FunctionTy *FuncTy) {
+  // std::string getFunctionTyStr(const pb::FunctionTy *FuncTy) {
   int i, size;
   std::string retval;
   retval.append(getTypeStr(&FuncTy->returnty()));
@@ -277,18 +281,18 @@ pb::Table *care_tb_load(char *filename) {
   return ret;
 }
 
-int care_tb_search(pb::Table *table, std::string key, pb::FunctionTy **FuncTy,
+int care_tb_search(pb::Table *table, std::string key, pb::FunctionTy &FuncTy,
                    char ***params, int *n_params) {
   int i, n_records = table->records_size();
   pb::Record record;
   for (i = 0; i < n_records; i++) {
     record = table->records(i);
     if (record.key() == key) {
-      *FuncTy = (pb::FunctionTy *)&record.functy();
+      FuncTy = record.functy();
       *n_params = record.parameters_size();
       *params = (char **)malloc(sizeof(char *) * (*n_params));
       for (i = 0; i < *n_params; i++) {
-        (*params)[i] = (char *)record.parameters(i).c_str();
+        (*params)[i] = strdup(record.parameters(i).c_str());
       }
       return 1;
     }
@@ -317,6 +321,7 @@ enum TypeID care_tb_get_return_type_id(pb::FunctionTy *Ty) {
 int care_tb_get_return_type_width(pb::FunctionTy *Ty) {
   pb::Type returnTy = Ty->returnty();
   if (returnTy.id() == pb::IntegerTyID) return returnTy.width();
+  if (returnTy.id() == pb::PointerTyID) return returnTy.width();
   return 0;
 }
 
@@ -352,11 +357,9 @@ extern "C" int care_tb_search_c(care_table_t table, char *key,
                                 int *n_params) {
   int ret;
   pb::Table *tb = reinterpret_cast<pb::Table *>(table);
-  pb::FunctionTy *Ty;
-  ret = care_tb_search(tb, key, &Ty, params, n_params);
-  if (ret) {
-    *FuncTy = reinterpret_cast<care_functy_t>(Ty);
-  }
+  pb::FunctionTy *Ty = new pb::FunctionTy;
+  ret = care_tb_search(tb, key, *Ty, params, n_params);
+  if (ret) *FuncTy = reinterpret_cast<care_functy_t>(Ty);
   return ret;
 }
 

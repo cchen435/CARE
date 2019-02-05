@@ -45,7 +45,7 @@ static int care_util_is_in_library(void *addr) {
   return 0;
 }
 
-static int care_util_unwind(int steps) {
+void care_util_unwind(int steps) {
   unw_cursor_t cursor;
   unw_context_t unw_ctx;
 #if DEBUG
@@ -61,13 +61,13 @@ static int care_util_unwind(int steps) {
 #if DEBUG
   unw_get_proc_name(&cursor, proc, 128, &off);
   unw_get_reg(&cursor, UNW_REG_IP, &pc);
-  fprintf(stderr, "crash point: function --> %s, PC --> %llx\n", proc, pc);
+  fprintf(stderr, "crash point: function --> %s, PC --> %lx\n", proc, pc);
 #endif
   while (steps--) unw_step(&cursor);
 #if DEBUG
   unw_get_proc_name(&cursor, proc, 128, &off);
   unw_get_reg(&cursor, UNW_REG_IP, &pc);
-  fprintf(stderr, "replay point: function --> %s, PC --> %llx\n", proc, pc);
+  fprintf(stderr, "replay point: function --> %s, PC --> %lx\n", proc, pc);
 #endif
   // rollback by 1 instruction (callinst)
   care_util_rollback(&cursor);
@@ -168,12 +168,8 @@ void care_util_init(care_context_t *context, siginfo_t *sig_info,
   fprintf(stderr, "CARE is to recover %s [pc: 0x%llx]\n", __progname,
           context->pc);
 
-// loading recovery table
-#ifdef DEBUG
-  sprintf(filename, "/home/cchen/Documents/Projects/CARE/libcare/test/test.tb");
-#else
+  // loading recovery table
   sprintf(filename, "%s.tb", program_invocation_name);
-#endif
 
   context->lib_table = care_tb_load_c(filename);
 
@@ -227,6 +223,10 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
   care_ud_disasm_instruction(&ud_obj, (const uint8_t *)(context->pc));
   context->insn = ud_insn_asm(&ud_obj);
 
+#if DEBUG
+  fprintf(stderr, "Instruction: %s\n", context->insn);
+#endif
+
   // which operand is the potential interesting code to be updated
   if (signo == SIGSEGV)
     target = (care_target_t *)care_ud_get_mem_op(&ud_obj);
@@ -252,7 +252,8 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
 int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
   char buf[256];
   int retval;
-  char *src;
+  char *src = NULL;
+  char *fname = NULL;
   int line, column;
   care_hash_t key;
 
@@ -260,12 +261,38 @@ int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
 
   // get debug line info and calc the hash value
   retval = care_dw_get_src_info(context->dwarf, PC, &src, &line, &column);
-  sprintf(buf, "%s/%d/%d", src, line, column);
+  (fname = strrchr(src, '/')) ? ++fname : (fname = src);
+#ifdef DEBUG
+  fprintf(stderr, "Build Key from:\n\tFile: %s\n\tLine: %d\n\tColumn: %d\n",
+          fname, line, column);
+#endif
+  sprintf(buf, "%s/%d/%d", fname, line, column);
   care_util_hash(buf, key);
+
+#ifdef DEBUG
+  fprintf(stderr, "Key: ");
+  for (unsigned i = 0; i < 32; i++) fprintf(stderr, "%c", key[i]);
+  fprintf(stderr, "\n");
+#endif
+
+  // clean the storage used by src
   care_dw_dealloc_str(context->dwarf, src);
 
   retval = care_tb_search_c(context->lib_table, key, &routine->funcTy,
                             &routine->params, &routine->n_params);
+
+#ifdef DEBUG
+  if (!retval)
+    fprintf(stderr, "Recovery Routine: Not Found\n");
+  else {
+    fprintf(stderr, "Recovery Routine:\n\tFunction: %p\n\tParams: ",
+            care_tb_get_function_name_c(routine->funcTy));
+    for (unsigned i = 0; i < routine->n_params; i++) {
+      fprintf(stderr, "%s ", routine->params[i]);
+    }
+  }
+#endif
+
   return retval;
 }
 

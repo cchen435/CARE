@@ -7,4 +7,5 @@ add_library(rtable STATIC
 target_link_libraries(rtable protobuf )
 
 set(CMAKE_CXX_STANDARD 11) # enable C++11 standard
-set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC")
+set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -g")
+set(CMAKE_C_FLAGS "-fPIC -g")
