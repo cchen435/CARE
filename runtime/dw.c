@@ -162,7 +162,7 @@ static void *care_dw_eval_op_value(care_context_t *env, Dwarf_Locdesc_c desc) {
   dwarf_get_location_op_value_c(desc, 0, &opcode, &op1, &op2, &op3,
                                 &offset_for_branch, &error);
 
-  if (opcode == DW_OP_addr) {
+  if (opcode == DW_OP_addr || opcode == DW_OP_consts) {
     // the variable is at static memory address
     return (void *)op1;
   } else if ((opcode >= DW_OP_reg0 && opcode <= DW_OP_reg31) ||
@@ -212,7 +212,7 @@ static void *care_dw_eval_op_value(care_context_t *env, Dwarf_Locdesc_c desc) {
     }
   } else if (opcode == DW_OP_fbreg) {
     // frame based addr calculation
-    // TODO: we assume on X86_64, the frame base is always stored at
+    // FIXME: we assume on X86_64, the frame base is always stored at
     // %RBP (or DW_OP_reg6). fix it in the furture to derive the frame
     // base by retrieving and analyze the DIE of the current function
     return (void *)((*env->gregs)[REG_RBP] + (Dwarf_Signed)op1);
@@ -368,10 +368,6 @@ Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC) {
          dwarf_errno(error), dwarf_errmsg(error));
   }
 
-#ifdef PRINT_FUNC_NAMES
-  printf("globals: \n");
-#endif
-
   for (i = 0; i < gcnt; i++) {
     retval =
         dwarf_global_name_offsets(globals[i], &global_name, &global_die_offset,
@@ -393,9 +389,7 @@ Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC) {
       dwarf_lowpc(tmp, &lowpc, &error);
       dwarf_highpc_b(tmp, &highpc, &form, &class, &error);
 
-      if (class == DW_FORM_CLASS_CONSTANT) {
-        highpc = highpc + lowpc;
-      }
+      if (class == DW_FORM_CLASS_CONSTANT) highpc = highpc + lowpc;
 
       if (lowpc < PC && highpc > PC) {
         if (result == NULL)
@@ -404,12 +398,6 @@ Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC) {
           errx(EXIT_FAILURE, "find two functions containing the same PC");
         }
       }
-    } else if (global_tag != DW_TAG_variable) {
-#ifdef PRINT_FUNC_NAMES
-      dwarf_get_TAG_name(global_tag, &global_tag_name);
-      printf("[unprocessed] %s: %s\n", global_tag_name, global_name);
-      dwarf_dealloc(dwarf.dwarf_handle, (void *)global_tag_name, DW_DLA_STRING);
-#endif
     }
 
     dwarf_dealloc(dwarf.dwarf_handle, global_name, DW_DLA_STRING);
@@ -417,12 +405,6 @@ Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC) {
   }
 
   dwarf_dealloc(dwarf.dwarf_handle, globals, DW_DLA_LIST);
-#ifdef DEBUG
-  dwarf_diename(result, &global_name, &error);
-  printf("returned DIE name: %s\n", global_name);
-  dwarf_dealloc(dwarf.dwarf_handle, (void *)global_name, DW_DLA_STRING);
-#endif
-
   return result;
 }
 
@@ -676,7 +658,7 @@ int care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC, char **ret_file,
   while ((retval = care_dw_get_next_cu_die(dwarf, &cu_die)) == DW_DLV_OK) {
     dwarf_srclines(cu_die, &linebuf, &linecount, &error);
 
-#ifdef DEBUG_LINE_TABLE
+#ifdef DEBUG_DW_LINE
     care_dw_print_line_table(dwarf, cu_die);
 #endif
 
@@ -785,7 +767,7 @@ void *care_dw_get_var_loc(care_context_t *env, char *varname) {
 
   // get the die of the variable
   var_die = care_dw_get_var_die(env->dwarf, env->pc, varname);
-#ifdef DEBUG
+#ifdef DEBUG_DW_LOCLIST
   fprintf(stderr, "The Die for %s: \n", varname);
   care_dw_print_die(env->dwarf, var_die, 0);
 #endif
