@@ -1,1 +1,9 @@
 build
+protobuf
+test/frontend/*.ll
+test/frontend/*.o
+test/frontend/*.tb
+test/frontend/*.dwarf
+test/frontend/*.so
+test/frontend/*.bc
+
