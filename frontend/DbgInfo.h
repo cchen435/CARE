@@ -48,9 +48,8 @@ class CAREDIBuilder {
   }
 
   DISubprogram *createDIFunction(Function &F);
-  DILocalVariable *createDIVariable(Value *V, DIScope *Scop);
+  DILocalVariable *createDIVariable(Value *V, std::string VName, DIScope *Scop);
   DebugLoc setDIDebugLoc(Instruction *Insn, DIScope *Scop);
-  Instruction *createDbgValue(Value *V, DIScope *Scope);
   void finalize() { DBuilder->finalize(); }
 };
 

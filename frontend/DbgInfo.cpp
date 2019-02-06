@@ -111,12 +111,11 @@ DebugLoc CAREDIBuilder::setDIDebugLoc(Instruction *Insn, DIScope *Scop) {
   return loc;
 }
 
-DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, DIScope *Scop) {
+DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, std::string VName,
+                                                 DIScope *Scop) {
   DILocalVariable *D;
   Instruction *pos;
   DIType *VDITy;
-
-  std::string VName = V->getName();
 
   int Line = getLineNumber();
   int Col = getColNumber();
@@ -141,21 +140,6 @@ DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, DIScope *Scop) {
   Instruction *dbg =
       DBuilder->insertDbgValueIntrinsic(V, 0, D, DIExpr, DL, pos);
   return D;
-}
-
-Instruction *CAREDIBuilder::createDbgValue(Value *V, DIScope *Scope) {
-  int line = getLineNumber();
-  int col = getColNumber();
-  auto DL = DebugLoc::get(line, col, Scope);
-  auto DIVar = createDIVariable(V, Scope);
-  Instruction *pos = nullptr;
-  if (auto arg = dyn_cast<Argument>(V)) {
-    Function *F = arg->getParent();
-    pos = F->getEntryBlock().getFirstNonPHIOrDbg();
-  } else if (auto I = dyn_cast<Instruction>(V)) {
-    pos = I->getNextNode();
-  }
-  DBuilder->insertDbgValueIntrinsic(V, 0, DIVar, nullptr, DL, pos);
 }
 
 DIType *CAREDIBuilder::getOrCreateDIType(Type *Ty) {

@@ -2,6 +2,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileSystem.h>
 
@@ -74,6 +75,31 @@ std::string CarePass::getKey(DebugLoc loc) {
   return result;
 }
 
+void CarePass::getDgbInfo(Module &M) {
+  std::vector<Instruction *> PhiNodes;  // with llvm 3.8.0, phi nodes has no
+                                        // dgb, so we need to propagate
+  Module::FunctionListType &funcs = M.getFunctionList();
+  for (Module::FunctionListType::iterator it = funcs.begin(), end = funcs.end();
+       it != end; it++) {
+    Function &F = *it;
+    if (F.isDeclaration() || F.isIntrinsic()) continue;
+    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
+      if (isa<PhiNode>(&*I)) PhiNodes.push_back(I);
+      if (auto DbgInst = dyn_cast<DbgInfoIntrinsic>(&*I)) {
+      }
+    }
+  }
+  // fix the missing dbg data issue for phi nodes
+  for (auto phi : PhiNodes) {
+    auto op1 = phi->getOperand(0);
+    auto op2 = phi->getOperand(1);
+    auto md1 = getDbgData(op1);
+    auto md2 = getDbgData(op2);
+    assert(md1 == md2);
+    phi->setMetadata("dbg", md1);
+  }
+}
+
 bool CarePass::runOnModule(Module &M) {
   initialize(M);
 
@@ -135,8 +161,10 @@ bool CarePass::runOnModule(Module &M) {
     }
 
     if (!hasDebugInfo) {
-      for (auto it = Variables.begin(); it != Variables.end(); it++)
-        DbgInfoBuilder->createDIVariable(*it, DIFunc);
+      for (auto it = Variables.begin(); it != Variables.end(); it++) {
+        std::string VName = getOrCreateValueName(*it);
+        DbgInfoBuilder->createDIVariable(*it, VName, DIFunc);
+      }
     }
   }
 
