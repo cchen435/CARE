@@ -1,6 +1,6 @@
 add_library(CARE MODULE
     # List your source files here.
-    Care.cpp
+    CarePass.cpp
     DbgInfo.cpp
 )
 

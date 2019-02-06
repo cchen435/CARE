@@ -25,9 +25,8 @@ CAREDIBuilder::CAREDIBuilder(Module &M, int lang) : M(M), LANG(lang) {
   /**
    * create a compiiler Unit
    */
-  CU = DBuilder->createCompileUnit(LANG, MID, ".", "CARE", false, "", false);
-
   DFile = DBuilder->createFile(CU->getFilename(), CU->getDirectory());
+  CU = DBuilder->createCompileUnit(LANG, DFile, "CARE", false, "", 0);
 }
 
 DIType *CAREDIBuilder::createDIType(Type *Ty) {
@@ -36,27 +35,25 @@ DIType *CAREDIBuilder::createDIType(Type *Ty) {
   if (Ty->isIntegerTy()) {
     switch (Ty->getIntegerBitWidth()) {
       case 8:
-        ret =
-            DBuilder->createBasicType("char", 8, 8, dwarf::DW_ATE_signed_char);
+        ret = DBuilder->createBasicType("char", 8, dwarf::DW_ATE_signed_char);
         break;
       case 16:
-        ret = DBuilder->createBasicType("short", 16, 16, dwarf::DW_ATE_signed);
+        ret = DBuilder->createBasicType("short", 16, dwarf::DW_ATE_signed);
         break;
       case 32:
-        ret = DBuilder->createBasicType("int", 32, 32, dwarf::DW_ATE_signed);
+        ret = DBuilder->createBasicType("int", 32, dwarf::DW_ATE_signed);
         break;
       case 64:
-        ret = DBuilder->createBasicType("long long", 64, 64,
-                                        dwarf::DW_ATE_signed);
+        ret = DBuilder->createBasicType("long long", 64, dwarf::DW_ATE_signed);
         break;
       default:
         dbgs() << "unhandlered integer Type:" << *Ty << "\n";
         exit(EXIT_FAILURE);
     }
   } else if (Ty->isDoubleTy()) {
-    ret = DBuilder->createBasicType("double", 64, 64, dwarf::DW_ATE_float);
+    ret = DBuilder->createBasicType("double", 64, dwarf::DW_ATE_float);
   } else if (Ty->isFloatTy()) {
-    ret = DBuilder->createBasicType("float", 32, 32, dwarf::DW_ATE_float);
+    ret = DBuilder->createBasicType("float", 32, dwarf::DW_ATE_float);
   } else if (Ty->isPointerTy()) {
     ret = DBuilder->createPointerType(createDIType(Ty->getPointerElementType()),
                                       64, 64);
@@ -137,8 +134,7 @@ DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, std::string VName,
   DIExpression *DIExpr = DBuilder->createExpression();
   const DILocation *DL = DebugLoc::get(Line, Col, Scop);
 
-  Instruction *dbg =
-      DBuilder->insertDbgValueIntrinsic(V, 0, D, DIExpr, DL, pos);
+  Instruction *dbg = DBuilder->insertDbgValueIntrinsic(V, D, DIExpr, DL, pos);
   return D;
 }
 
