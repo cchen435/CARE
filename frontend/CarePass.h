@@ -40,10 +40,9 @@ struct CarePass : public ModulePass {
    */
   bool hasDebugInfo;
   CAREDIBuilder *DbgInfoBuilder;
-
   // value to metadata map, used to get
   // variable names when dbg (-g) is enabled
-  std::map<Value *, DbgInfoIntrinsic *> VDBGMap;
+  std::map<Value *, DbgValueInst *> DbgValueMap;
 
  private:
   void initialize(Module &M);
@@ -55,7 +54,7 @@ struct CarePass : public ModulePass {
    * when the program is compiled with -g flag this method is
    * called to setup the VMMap
    */
-  void getDgbInfo(Function &F, std::map<Value *, DbgInfoIntrinsic *> &VDbgMap);
+  void getDbgInfo(Module &M);
 
   /**
    * getParamsAndStmts is to retrive the computations for a
