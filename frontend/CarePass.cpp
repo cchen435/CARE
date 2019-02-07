@@ -109,7 +109,7 @@ void CarePass::getDgbInfo(Function &F,
 
   DEBUG_WITH_TYPE("DBG", {
     llvm::dbgs() << "Debug Local Variables: ";
-    for (auto item : VDBGMap)
+    for (auto item : VDbgMap)
       llvm::dbgs() << "\n\tValue : " << *item.first << "(" << item.first << ")"
                    << "\tdbg.value: " << *item.second;
     llvm::dbgs() << "\n\n";
@@ -137,8 +137,9 @@ bool CarePass::runOnModule(Module &M) {
     std::map<Value *, DbgInfoIntrinsic *> DbgValueMap;
     if (!hasDebugInfo)
       DIFunc = DbgInfoBuilder->createDIFunction(F);
-    else
+    else {
       getDgbInfo(F, DbgValueMap);
+    }
 
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
       if (!isMemAccInst(&*I)) continue;
@@ -146,6 +147,7 @@ bool CarePass::runOnModule(Module &M) {
       Function *kernel;
       std::set<Value *> params;
       std::tie(kernel, params) = buildRecoveryKernel(&*I);
+
       Variables.insert(params.begin(), params.end());
 
       dbgs() << "created a recovery kernel: "
@@ -166,13 +168,16 @@ bool CarePass::runOnModule(Module &M) {
       if (!hasDebugInfo)
         for (auto it = params.begin(); it != params.end(); it++)
           pnames.push_back(getOrCreateValueName(*it));
-      else
+      else {
         for (auto it = params.begin(); it != params.end(); it++) {
           auto DbgValue = DbgValueMap[*it];
-          auto Var = dyn_cast<MetadataAsValue>(DbgValue->getArgOperand(2));
+          dbgs() << "get name for: " << **it << "(" << *it << ")\n";
+          dbgs() << "get Dbg data from: " << DbgValue << "\n";
+          auto Var = dyn_cast<MetadataAsValue>(DbgValue->getArgOperand(1));
           auto name = dyn_cast<DILocalVariable>(Var->getMetadata())->getName();
           pnames.push_back(name.str());
         }
+      }
 
       DEBUG_WITH_TYPE("RTB", {
         dbgs() << "Create RTB Entry: "
@@ -272,11 +277,11 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
   }
   std::reverse(Stmts.begin(), Stmts.end());
 
-  DEBUG_WITH_TYPE("info", dbgs() << "Params:\n");
-  DEBUG_WITH_TYPE("info", {
+  DEBUG_WITH_TYPE("params", {
     int i = 0;
+    dbgs() << "Params:\n";
     for (auto it = Params.begin(); it != Params.end(); it++) {
-      dbgs() << "\tParam[" << i++ << "]: " << **it << "\n";
+      dbgs() << "\tParam[" << i++ << "]: " << **it << " (" << *it << ")\n";
     }
   });
 
