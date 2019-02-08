@@ -219,7 +219,7 @@ void care_util_finish(care_context_t *context) {
  * and  for SIGFPE, it could be either register or memory location )
  */
 care_method_t care_util_diagnose(int signo, care_context_t *context,
-                                 care_target_t **target) {
+                                 care_target_t *target) {
   ud_t ud_obj;       // the udis86 object
   ud_type_t ud_reg;  // the register naming in udis namespace
   int libc_reg;      // the register naming in libc namespace
@@ -237,9 +237,9 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
 
   // which operand is the potential interesting code to be updated
   if (signo == SIGSEGV)
-    *target = (care_target_t *)care_ud_get_mem_op(&ud_obj);
+    target = *(care_target_t *)care_ud_get_mem_op(&ud_obj);
   else if (signo == SIGFPE)
-    *target = (care_target_t *)care_ud_get_divident(&ud_obj);
+    target = *(care_target_t *)care_ud_get_divident(&ud_obj);
 
   if (target == NULL) return 0;
   return REDO;

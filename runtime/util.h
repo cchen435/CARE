@@ -36,7 +36,7 @@ void care_util_finish(care_context_t *context);
  *         target argument if the recovery method is REDO;
  */
 care_method_t care_util_diagnose(int signo, care_context_t *context,
-                                 ud_operand_t **target);
+                                 ud_operand_t *target);
 
 void care_util_unwind(int steps);
 

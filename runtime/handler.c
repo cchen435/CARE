@@ -12,7 +12,7 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
   care_context_t ctx;
   care_method_t method;
   care_routine_t routine;
-  care_target_t *target;
+  care_target_t target;
 
   /**
    * initialize the library, it will simply:
@@ -40,7 +40,7 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
     retval = care_util_exec_routine(&ctx, routine, &rvalue);
 
     // update the target
-    care_util_update(&ctx, target, rvalue);
+    care_util_update(&ctx, &target, rvalue);
 
     // clean the library
     care_util_finish(&ctx);
