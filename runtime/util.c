@@ -45,26 +45,34 @@ static int care_util_is_in_library(void *addr) {
   return 0;
 }
 
+// we use steps to control the position to unwind in application space
 void care_util_unwind(int steps) {
   unw_cursor_t cursor;
   unw_context_t unw_ctx;
-#if DEBUG
+#if DEBUG_UNWIND
   char proc[128];
   unw_word_t pc;
   unw_word_t off;
 #endif
   unw_getcontext(&unw_ctx);
   unw_init_local(&cursor, &unw_ctx);
-  while (unw_is_signal_frame(&cursor)) {
-    unw_step(&cursor);
-  }
-#if DEBUG
+
+  // a signal frame is created in response to potentially
+  // async interruption, e.g. signal handler since we are
+  // in signal hanlder now, so we need to roll back to the
+  // first non-signal frame
+  while (unw_is_signal_frame(&cursor)) unw_step(&cursor);
+
+#if DEBUG_UNWIND
+  // unw_get_proc_name is to get the function name for the frame
   unw_get_proc_name(&cursor, proc, 128, &off);
   unw_get_reg(&cursor, UNW_REG_IP, &pc);
   fprintf(stderr, "crash point: function --> %s, PC --> %lx\n", proc, pc);
 #endif
+
   while (steps--) unw_step(&cursor);
-#if DEBUG
+
+#if DEBUG_UNWIND
   unw_get_proc_name(&cursor, proc, 128, &off);
   unw_get_reg(&cursor, UNW_REG_IP, &pc);
   fprintf(stderr, "replay point: function --> %s, PC --> %lx\n", proc, pc);
@@ -211,7 +219,7 @@ void care_util_finish(care_context_t *context) {
  * and  for SIGFPE, it could be either register or memory location )
  */
 care_method_t care_util_diagnose(int signo, care_context_t *context,
-                                 care_target_t *target) {
+                                 care_target_t **target) {
   ud_t ud_obj;       // the udis86 object
   ud_type_t ud_reg;  // the register naming in udis namespace
   int libc_reg;      // the register naming in libc namespace
@@ -229,9 +237,9 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
 
   // which operand is the potential interesting code to be updated
   if (signo == SIGSEGV)
-    target = (care_target_t *)care_ud_get_mem_op(&ud_obj);
+    *target = (care_target_t *)care_ud_get_mem_op(&ud_obj);
   else if (signo == SIGFPE)
-    target = (care_target_t *)care_ud_get_divident(&ud_obj);
+    *target = (care_target_t *)care_ud_get_divident(&ud_obj);
 
   if (target == NULL) return 0;
   return REDO;
