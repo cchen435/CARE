@@ -42,7 +42,8 @@ struct CarePass : public ModulePass {
   CAREDIBuilder *DbgInfoBuilder;
   // value to metadata map, used to get
   // variable names when dbg (-g) is enabled
-  std::map<Value *, DbgValueInst *> DbgValueMap;
+  // std::map<Value *, DbgValueInst *> DbgValueMap;
+  std::map<Value *, DbgInfoIntrinsic *> DbgValueMap;
 
  private:
   void initialize(Module &M);

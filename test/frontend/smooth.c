@@ -3,8 +3,28 @@
 
 #include "care.h"
 
-int smooth(int *igrid, int *mtheta, int *itran, double *phism, double *phitmp,
-           double *phi, int mpsi) {
+typedef struct {
+  int mpsi;
+} gtc_global_params_t;
+
+typedef struct {
+  int *igrid;
+  int *mtheta;
+  double *phitmp;
+} gtc_field_data_t;
+
+typedef struct {
+  gtc_global_params_t global_params;
+  gtc_field_data_t field_data;
+} gtc_bench_data_t;
+
+int smooth(gtc_bench_data_t *gtc_input) {
+  gtc_global_params_t *params = &(gtc_input->global_params);
+  gtc_field_data_t *field_data = &(gtc_input->field_data);
+  int mpsi = params->mpsi;
+  int *igrid = field_data->igrid;
+  int *mtheta = field_data->mtheta;
+  double *phitmp = field_data->phitmp;
 #if 0
   // radial smoothing
   for (int i = 1; i < mpsi; i++) {
@@ -52,39 +72,43 @@ int smooth(int *igrid, int *mtheta, int *itran, double *phism, double *phitmp,
       efield += phi[(igrid[i] + j) * 2 + 1] * phi[(igrid[i] + j) * 2 + 1];
     }
   }
- #endif
+#endif
 
   return 0;
 }
 
 int main(int argc, char *argv[]) {
-    int mpsi = atoi(argv[1]);
-    int *igrid, *mtheta, *itran;
-    double *phism, *phitmp, *phi;
-    
-    care_user_init();
+  int mpsi = atoi(argv[1]);
+  int *igrid, *mtheta, *itran;
+  double *phism, *phitmp, *phi;
+  gtc_bench_data_t gtc_input;
 
-    igrid = (int *) malloc(sizeof(int) * mpsi);
-    mtheta = (int *) malloc(sizeof(int) * mpsi);
-    itran = (int *) malloc(sizeof(int) * mpsi);
+  care_user_init();
 
-    int i;
-    for (i = 0; i < mpsi; i++) {
-    	int tmp = rand() % mpsi;
-	igrid[i] = mtheta[i] = itran[i] = tmp;
-    }
+  igrid = (int *)malloc(sizeof(int) * mpsi);
+  mtheta = (int *)malloc(sizeof(int) * mpsi);
+  itran = (int *)malloc(sizeof(int) * mpsi);
 
-    phism = (double *) malloc(sizeof(double) * mpsi);
-    phitmp = (double *) malloc(sizeof(double) * mpsi);
-    phi = (double *) malloc(sizeof(double) * mpsi);
+  int i;
+  for (i = 0; i < mpsi; i++) {
+    int tmp = rand() % mpsi;
+    igrid[i] = mtheta[i] = itran[i] = tmp;
+  }
 
-    for (i = 0; i < mpsi; i++) {
-	    phism[i] = (double)rand();
-	    phitmp[i] = (double)rand();
-	    phi[i] = (double)rand();
-    }
+  phism = (double *)malloc(sizeof(double) * mpsi);
+  phitmp = (double *)malloc(sizeof(double) * mpsi);
+  phi = (double *)malloc(sizeof(double) * mpsi);
 
-    smooth(igrid, mtheta, itran, phism, phitmp, phi, mpsi);
-    return 0;
+  for (i = 0; i < mpsi; i++) {
+    phism[i] = (double)rand();
+    phitmp[i] = (double)rand();
+    phi[i] = (double)rand();
+  }
 
+  gtc_input.global_params.mpsi = mpsi;
+  gtc_input.field_data.igrid = igrid;
+  gtc_input.field_data.mtheta = mtheta;
+  gtc_input.field_data.phitmp = phitmp;
+  smooth(&gtc_input);
+  return 0;
 }
