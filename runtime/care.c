@@ -6,15 +6,10 @@
  */
 
 #include <assert.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#define __USE_GNU
-#define __USE_XOPEN_EXTENDED
-#include <signal.h>
-#include <sys/ucontext.h>  // for ucontext and greg_t
 #include <unistd.h>
-
 
 #define FILE_PATH_MAX_LEN 256
 

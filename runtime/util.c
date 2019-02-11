@@ -1,8 +1,11 @@
-/**
+/*
  *
  */
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE  // for dladdr
+#endif
 #include <dlfcn.h>
+
 #include <err.h>
 #include <errno.h>
 #include <ffi.h>
@@ -14,9 +17,6 @@
 #include <mhash.h>
 #include <stdio.h>
 #include <string.h>
-//#define __USE_GNU
-//#define __USE_XOPEN_EXTENDED
-#include <signal.h>
 #include <ucontext.h>
 #include <udis86.h>
 #include <unistd.h>
@@ -34,8 +34,9 @@
 
 // ------------------ local functions definition -------------------
 /**
- * care_util_is_in_library is to check wether the addr belongs to an shared
- * library
+ * care_util_is_in_library is to check wether the addr
+ * belongs to an shared library. It is implemented based
+ * on dladdr, which is to translate the address into semantic info
  */
 static int care_util_is_in_library(void *addr) {
   extern char *program_invocation_name;
@@ -43,6 +44,24 @@ static int care_util_is_in_library(void *addr) {
   int ret = dladdr(addr, &info);
   if (ret && strcmp(info.dli_fname, program_invocation_name) != 0) return 1;
   return 0;
+}
+
+/**
+ * care_util_rollback rollback one call instruction.
+ * FIXME: rollback only one instruction maybe is not good,
+ * since some instructions before call is for parameter.
+ * Can we change the parameter passing into by-stack.
+ */
+void care_util_rollback(unw_cursor_t *cursor) {
+  ud_t obj;
+  unw_word_t pc;
+  care_ud_setup(&obj);
+  unw_get_reg(cursor, UNW_REG_IP, &pc);
+  while (pc--) {
+    care_ud_disasm_instruction(&obj, (uint8_t *)pc);
+    if (UD_Icall == ud_insn_mnemonic(&obj)) break;
+  }
+  unw_set_reg(cursor, UNW_REG_IP, pc);
 }
 
 // we use steps to control the position to unwind in application space
@@ -80,21 +99,6 @@ void care_util_unwind(int steps) {
   // rollback by 1 instruction (callinst)
   care_util_rollback(&cursor);
   unw_resume(&cursor);
-}
-
-/**
- * care_util_rollback rollback one call instruction
- */
-void care_util_rollback(unw_cursor_t *cursor) {
-  ud_t obj;
-  unw_word_t pc;
-  care_ud_setup(&obj);
-  unw_get_reg(cursor, UNW_REG_IP, &pc);
-  while (pc--) {
-    care_ud_disasm_instruction(&obj, (uint8_t *)pc);
-    if (UD_Icall == ud_insn_mnemonic(&obj)) break;
-  }
-  unw_set_reg(cursor, UNW_REG_IP, pc);
 }
 
 //==-------------------- hash related routines -----------------------==//
@@ -181,7 +185,7 @@ void care_util_init(care_context_t *context, siginfo_t *sig_info,
 
   context->lib_table = care_tb_load_c(filename);
 
-#ifdef DEBUG
+#ifdef DEBUG_RTB
   care_tb_print_c(context->lib_table);
 #endif
 
@@ -224,7 +228,7 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
   ud_type_t ud_reg;  // the register naming in udis namespace
   int libc_reg;      // the register naming in libc namespace
 
-  if (care_util_is_in_library(context->pc)) return UNWIND;
+  if (care_util_is_in_library((void *)context->pc)) return UNWIND;
 
   // disassemble the instruction
   care_ud_setup(&ud_obj);
@@ -237,9 +241,9 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
 
   // which operand is the potential interesting code to be updated
   if (signo == SIGSEGV)
-    target = *(care_target_t *)care_ud_get_mem_op(&ud_obj);
+    *target = *(care_target_t *)care_ud_get_mem_op(&ud_obj);
   else if (signo == SIGFPE)
-    target = *(care_target_t *)care_ud_get_divident(&ud_obj);
+    *target = *(care_target_t *)care_ud_get_divident(&ud_obj);
 
   if (target == NULL) return 0;
   return REDO;
@@ -468,7 +472,7 @@ int care_util_update(care_context_t *env, care_target_t *target,
   // update the register with the value
   ptr = (uint8_t *)&(*env->gregs)[libc_reg];
   // adjust register alignment, e.g. AH, BH, CH, DH
-  reg_width = care_ud_get_reg_width(ud_reg);
+  reg_width = care_ud_get_reg_width(ud_reg) / 8;
   if (care_ud_is_high(ud_reg)) ptr += reg_width;
   memcpy(ptr, &val, reg_width);
 }

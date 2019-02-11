@@ -8,13 +8,14 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif  // for accessing register definition in ucontext
 #include <signal.h>
-#include <unistd.h>
 
 #include <udis86.h>
-
-//#include "dw.h"
+#include <unistd.h>
 
 #if __x86_64__
 #define __UD_MODE__ 64
@@ -54,12 +55,12 @@ const ud_operand_t *care_ud_get_divident(ud_t *ud_obj) {
   ud_mnemonic_code_t mnemonic = ud_insn_mnemonic(ud_obj);
   const ud_operand_t *op;
   switch (mnemonic) {
-  case UD_Iidiv:
-    op = ud_insn_opr(ud_obj, 0);
-    break;
-  default:
-    errx(EXIT_FAILURE, "%s: Not Implemented yet: %s", __func__,
-         ud_lookup_mnemonic(mnemonic));
+    case UD_Iidiv:
+      op = ud_insn_opr(ud_obj, 0);
+      break;
+    default:
+      errx(EXIT_FAILURE, "%s: Not Implemented yet: %s", __func__,
+           ud_lookup_mnemonic(mnemonic));
   }
   return op;
 }
@@ -68,8 +69,7 @@ const ud_operand_t *care_ud_get_mem_op(ud_t *ud_obj) {
   const ud_operand_t *op;
   int i = 0;
   while ((op = ud_insn_opr(ud_obj, i)) != NULL) {
-    if (op->type == UD_OP_MEM)
-      return op;
+    if (op->type == UD_OP_MEM) return op;
     i++;
   }
   return NULL;
@@ -78,23 +78,23 @@ const ud_operand_t *care_ud_get_mem_op(ud_t *ud_obj) {
 char *care_ud_lookup_type_str(ud_type_t type) {
   char *str;
   switch (type) {
-  case UD_OP_MEM:
-    str = "memory";
-    break;
-  case UD_OP_PTR:
-    str = "seg:off pointer operand";
-    break;
-  case UD_OP_IMM:
-    str = "Immediate Operand";
-    break;
-  case UD_OP_CONST:
-    str = "implicit constant";
-    break;
-  case UD_OP_REG:
-    str = "Register";
-    break;
-  default:
-    break;
+    case UD_OP_MEM:
+      str = "memory";
+      break;
+    case UD_OP_PTR:
+      str = "seg:off pointer operand";
+      break;
+    case UD_OP_IMM:
+      str = "Immediate Operand";
+      break;
+    case UD_OP_CONST:
+      str = "implicit constant";
+      break;
+    case UD_OP_REG:
+      str = "Register";
+      break;
+    default:
+      break;
   }
   return str;
 }
@@ -155,20 +155,20 @@ int care_ud_is_xmm(ud_type_t ud_reg) {
 uint8_t *care_ud_get_direct_mem_addr(const ud_operand_t *op) {
   uint64_t v;
   switch (op->offset) {
-  case 8:
-    v = op->lval.ubyte;
-    break;
-  case 16:
-    v = op->lval.uword;
-    break;
-  case 32:
-    v = op->lval.udword;
-    break;
-  case 64:
-    v = op->lval.uqword;
-    break;
-  default:
-    v = 0;
+    case 8:
+      v = op->lval.ubyte;
+      break;
+    case 16:
+      v = op->lval.uword;
+      break;
+    case 32:
+      v = op->lval.udword;
+      break;
+    case 64:
+      v = op->lval.uqword;
+      break;
+    default:
+      v = 0;
   }
 #ifdef DEBUG
   fprintf(stderr, "%s: offset: %d, addr: 0x%lx\n", __func__, op->offset, v);
@@ -178,12 +178,12 @@ uint8_t *care_ud_get_direct_mem_addr(const ud_operand_t *op) {
 
 int care_ud_is_high(ud_type_t ud_reg) {
   switch (ud_reg) {
-  case UD_R_AH:
-  case UD_R_BH:
-  case UD_R_CH:
-  case UD_R_DH:
-    return 1;
-  default:
-    return 0;
+    case UD_R_AH:
+    case UD_R_BH:
+    case UD_R_CH:
+    case UD_R_DH:
+      return 1;
+    default:
+      return 0;
   }
 }

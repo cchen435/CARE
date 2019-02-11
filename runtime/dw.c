@@ -4,12 +4,6 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libdwarf.h>
-
-#ifndef __USE_GNU
-#define __USE_GNU
-#endif
-#include <signal.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,8 +1,4 @@
 #include <stdio.h>
-#define __USE_GNU
-#define __USE_XOPEN_EXTENDED
-#include <signal.h>
-
 #include "types.h"
 #include "util.h"
 

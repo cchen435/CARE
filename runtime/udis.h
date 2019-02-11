@@ -2,9 +2,12 @@
 #ifndef _CARE_UDIS_H_
 #define _CARE_UDIS_H_
 
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
 #include <signal.h>
 #include <unistd.h>
+#undef __USE_GNU
 
 #include <udis86.h>
 
