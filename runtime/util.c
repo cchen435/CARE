@@ -16,6 +16,7 @@
 
 #include <mhash.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ucontext.h>
 #include <udis86.h>
@@ -31,6 +32,10 @@
 #elif __i386__
 #define CARE_PC_REG REG_EIP
 #endif
+
+char *expr_path = NULL;
+char *worker = NULL;
+char *injection = NULL;
 
 // ------------------ local functions definition -------------------
 /**
@@ -166,6 +171,13 @@ void care_util_init(care_context_t *context, siginfo_t *sig_info,
   extern char *__progname;
   extern char *program_invocation_name;
   char filename[128];
+
+  expr_path = getenv("CARE_EXPR_PATH");
+  worker = getenv("CARE_WORKER_ID");
+  injection = getenv("CARE_INJECTION_ID");
+
+  fprintf(stderr, "Expr Path: %s, Worker: %s, Injection: %s\n\n", expr_path,
+          worker, injection);
 
   // simple alias to processor contest for easy access
   ucontext_t *ucontext = (ucontext_t *)sig_context;

@@ -3,9 +3,11 @@
 import logging as log
 from optparse import OptionParser
 from pathlib2 import Path
+import os
 import sys
 
 from Expr import GDBFIExpr
+
 
 def add_parser():
     Usage = 'usage: %prog -e name target.exe ...'
@@ -23,6 +25,7 @@ def add_parser():
     parser.add_option('-n', '--workers', type='int', dest='num_workers',
                       help='number of workers')
     return parser
+
 
 def parse_arguments(args, opts):
     expr_path = opts['exprid']
@@ -56,7 +59,7 @@ def parse_arguments(args, opts):
     # python will consider it as python options. so we will make it as a string
     executable = args[0].split()[0]
     arguments = args[1:]
-    arguments  = args[0].split()[1: ] + arguments
+    arguments = args[0].split()[1:] + arguments
 
     for i in range(len(arguments)):
         path = Path(arguments[i])
@@ -64,6 +67,7 @@ def parse_arguments(args, opts):
             arguments[i] = str(path.absolute())
 
     return (executable, arguments, expr_path, skip_profile, base, runs, fmodel, num_workers)
+
 
 def main():
     if sys.version_info[0] < 3:
@@ -73,10 +77,12 @@ def main():
     (opts, args) = parser.parse_args()
     opts = vars(opts)
 
-    (exe, params, path, skip, base, runs, model, num_workers) = parse_arguments(args, opts)
+    (exe, params, path, skip, base, runs, model,
+     num_workers) = parse_arguments(args, opts)
 
     if num_workers:
-        expr = GDBFIExpr(path, exe, params, runs, base, skip, model, num_workers)
+        expr = GDBFIExpr(path, exe, params, runs, base,
+                         skip, model, num_workers)
     else:
         expr = GDBFIExpr(path, exe, params, runs, base, skip, model)
 

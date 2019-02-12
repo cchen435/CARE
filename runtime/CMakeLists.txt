@@ -1,4 +1,4 @@
-add_library(care SHARED
+add_library(CARERuntime SHARED
     care.c
     dw.c
     handler.c
@@ -26,4 +26,4 @@ link_directories(
     ${CARE_SOURCE_DIR}/rtable
 )
 set(CMAKE_C_FLAGS "-g -DDEBUG")
-target_link_libraries(care ${UDIS_LIB} ${DWARF_LIB} ${MHASH_LIB} ${LIBUNWIND} rtable LLVMCore LLVMSupport)
+target_link_libraries(CARERuntime ${UDIS_LIB} ${DWARF_LIB} ${MHASH_LIB} ${LIBUNWIND} rtable LLVMCore LLVMSupport)

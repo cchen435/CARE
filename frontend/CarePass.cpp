@@ -42,7 +42,10 @@ void CarePass::initialize(Module &M) {
   // module dwarf version information), a DIBuilder will be created.
   hasDebugInfo = M.getDwarfVersion() ? true : false;
   DbgInfoBuilder = new CAREDIBuilder(M);
-  if (hasDebugInfo) getDbgInfo(M);
+  if (hasDebugInfo)
+    getDbgInfo(M);
+  else
+    DbgInfoBuilder->init();
   CareM = new Module("Care", M.getContext());
   CareM->setTargetTriple(M.getTargetTriple());
   CareM->setDataLayout(M.getDataLayout());
@@ -182,23 +185,33 @@ bool CarePass::runOnModule(Module &M) {
       // get the debug info for the memory access instruction.
       // if it does not exist, create one
       DebugLoc loc;
-      if (hasDebugInfo) {
+      if (hasDebugInfo) {  // if debug flag is enabled
         loc = I->getDebugLoc();
         // Debug data could be missed for some instruction even when compiled
         // with -g flag. Especially after some code optimizations.
         if (!loc) {
-          auto Addr = getPointerOperand(I);
-          if (auto AddrInst = dyn_cast<Instruction>(Addr)) {
-            auto DbgLoc = AddrInst->getDebugLoc();
-            I->setDebugLoc(DbgLoc);
-          } else
+          auto Addr = getPointerOperand(&*I);
+          DEBUG_WITH_TYPE("DBGLOC", dbgs() << "\n\nNo Debug Data for: " << *I
+                                           << "\n\tAddr: " << *Addr);
+          auto AddrInst = dyn_cast<Instruction>(Addr);
+          // is its addr operand has debug data ? if yes, use it for the mem
+          // access instruction
+          if (AddrInst) loc = AddrInst->getDebugLoc();
+          if (loc)
+            I->setDebugLoc(loc);
+          else {
+            DIFunc = I->getFunction()->getSubprogram();
             loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
+            DEBUG_WITH_TYPE("DBGLOC", dbgs()
+                                          << "\nNo Debug Data for: " << *I
+                                          << "\n\tand its Addr: " << *Addr
+                                          << "\n\tSet Dgb by CARE: " << *loc
+                                          << "\n\tFunction Type: " << *DIFunc);
+          }
+          DEBUG_WITH_TYPE("DBGLOC", dbgs() << "\n\n");
         }
-      } else
+      } else  // if debug flag is not enabled
         loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
-
-      DEBUG_WITH_TYPE("DBGLOC", dbgs() << "getDebugData for: " << *I
-                                       << "\tDebugLoc: " << loc << "\n");
 
       // build the recovery kernel table
       std::string key = getKey(loc);
@@ -442,31 +455,44 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
     case Instruction::Add:
       Inst = IRB.CreateAdd(Operands[0], Operands[1]);
       break;
+    case Instruction::Sub:
+      Inst = IRB.CreateSub(Operands[0], Operands[1]);
+      break;
+    case Instruction::Mul:
+      Inst = IRB.CreateMul(Operands[0], Operands[1]);
+      break;
+    case Instruction::Shl:
+      Inst = IRB.CreateShl(Operands[0], Operands[1]);
+      break;
+    case Instruction::And:
+      Inst = IRB.CreateAnd(Operands[0], Operands[1]);
+      break;
+    case Instruction::Or:
+      Inst = IRB.CreateOr(Operands[0], Operands[1]);
+      break;
+    case Instruction::Xor:
+      Inst = IRB.CreateXor(Operands[0], Operands[1]);
+      break;
     case Instruction::GetElementPtr:
       Inst = IRB.CreateGEP(
           Operands[0],
           std::vector<Value *>(Operands.begin() + 1, Operands.end()));
       break;
-    case Instruction::SExt:
-      Inst = IRB.CreateSExt(Operands[0], Insn->getType());
-      break;
     case Instruction::Load:
       Inst = IRB.CreateLoad(Operands[0]);
-      break;
-    case Instruction::Mul:
-      Inst = IRB.CreateMul(Operands[0], Operands[1]);
-      break;
-    case Instruction::Sub:
-      Inst = IRB.CreateSub(Operands[0], Operands[1]);
-      break;
-    case Instruction::Shl:
-      Inst = IRB.CreateShl(Operands[0], Operands[1]);
       break;
     case Instruction::BitCast:
       Inst = IRB.CreateBitCast(Operands[0], Insn->getType());
       break;
-    case Instruction::Or:
-      Inst = IRB.CreateOr(Operands[0], Operands[1]);
+    case Instruction::Trunc:
+      Inst =
+          IRB.CreateTrunc(Operands[0], dyn_cast<TruncInst>(Insn)->getDestTy());
+      break;
+    case Instruction::ZExt:
+      Inst = IRB.CreateZExt(Operands[0], dyn_cast<ZExtInst>(Insn)->getDestTy());
+      break;
+    case Instruction::SExt:
+      Inst = IRB.CreateSExt(Operands[0], dyn_cast<SExtInst>(Insn)->getDestTy());
       break;
     case Instruction::SDiv:
       Inst = IRB.CreateSDiv(Operands[0], Operands[1]);
@@ -477,6 +503,34 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
       break;
     case Instruction::Select:
       Inst = IRB.CreateSelect(Operands[0], Operands[1], Operands[2]);
+      break;
+    case Instruction::SIToFP:
+      Inst = IRB.CreateSIToFP(Operands[0],
+                              dyn_cast<SIToFPInst>(Insn)->getDestTy());
+      break;
+    case Instruction::FDiv:
+      Inst = IRB.CreateFDiv(Operands[0], Operands[1]);
+      break;
+    case Instruction::FMul:
+      Inst = IRB.CreateFMul(Operands[0], Operands[1]);
+      break;
+    case Instruction::FAdd:
+      Inst = IRB.CreateFAdd(Operands[0], Operands[1]);
+      break;
+    case Instruction::FSub:
+      Inst = IRB.CreateFSub(Operands[0], Operands[1]);
+      break;
+    case Instruction::FCmp:
+      Inst = IRB.CreateFCmp(dyn_cast<FCmpInst>(Insn)->getPredicate(),
+                            Operands[0], Operands[1]);
+      break;
+    case Instruction::FPToSI:
+      Inst = IRB.CreateFPToSI(Operands[0],
+                              dyn_cast<FPToSIInst>(Insn)->getDestTy());
+      break;
+    case Instruction::FPToUI:
+      Inst = IRB.CreateFPToUI(Operands[0],
+                              dyn_cast<FPToUIInst>(Insn)->getDestTy());
       break;
     case Instruction::Call:
       Callee = Operands.back();

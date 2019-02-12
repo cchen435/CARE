@@ -13,6 +13,9 @@
 
 CAREDIBuilder::CAREDIBuilder(Module &M, int lang) : M(M), LANG(lang) {
   DBuilder = new DIBuilder(M);
+}
+
+void CAREDIBuilder::init() {
   M.addModuleFlag(Module::Warning, "Dwarf Version", dwarf::DWARF_VERSION);
   M.addModuleFlag(Module::Warning, "Debug Info Version",
                   DEBUG_METADATA_VERSION);

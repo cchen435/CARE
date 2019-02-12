@@ -1,4 +1,4 @@
-add_library(CARE MODULE
+add_library(CAREPass MODULE
     # List your source files here.
     CarePass.cpp
     DbgInfo.cpp
@@ -11,14 +11,14 @@ link_directories(
     ${CARE_SOURCE_DIR}/rtable
 )
 
-target_link_libraries(CARE rtable mhash)
+target_link_libraries(CAREPass rtable mhash)
 
 # Use C++11 to compile your pass (i.e., supply -std=c++11).
-target_compile_features(CARE PRIVATE cxx_range_for cxx_auto_type)
+target_compile_features(CAREPass PRIVATE cxx_range_for cxx_auto_type)
 
 # LLVM is (typically) built with no C++ RTTI. We need to match that;
 # otherwise, we'll get linker errors about missing RTTI data.
-# set_target_properties(CARE PROPERTIES
+# set_target_properties(CAREPass PROPERTIES
 #    COMPILE_FLAGS "-fno-rtti"
 #)
 
