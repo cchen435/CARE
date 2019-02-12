@@ -11,7 +11,7 @@ CARE is to recover applications from failures by recomputing the crahsed states 
 
 CARE is implemented based on several packages, including:
 
-1. llvm-3.8.0 (should enable RTTI)
+1. llvm-6.0.1 (should enable RTTI, llvm-3.8.0 has issues when using debug data generated with -g flag)
 
 2. protobuf-cpp-3.6.0 (should match the version number)
 
