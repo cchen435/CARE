@@ -41,10 +41,8 @@ void CarePass::initialize(Module &M) {
   // if the module has no debug data (by checking whether the
   // module dwarf version information), a DIBuilder will be created.
   hasDebugInfo = M.getDwarfVersion() ? true : false;
-  if (!hasDebugInfo)
-    DbgInfoBuilder = new CAREDIBuilder(M);
-  else
-    getDbgInfo(M);
+  DbgInfoBuilder = new CAREDIBuilder(M);
+  if (hasDebugInfo) getDbgInfo(M);
   CareM = new Module("Care", M.getContext());
   CareM->setTargetTriple(M.getTargetTriple());
   CareM->setDataLayout(M.getDataLayout());
@@ -184,9 +182,19 @@ bool CarePass::runOnModule(Module &M) {
       // get the debug info for the memory access instruction.
       // if it does not exist, create one
       DebugLoc loc;
-      if (hasDebugInfo)
+      if (hasDebugInfo) {
         loc = I->getDebugLoc();
-      else
+        // Debug data could be missed for some instruction even when compiled
+        // with -g flag. Especially after some code optimizations.
+        if (!loc) {
+          auto Addr = getPointerOperand(I);
+          if (auto AddrInst = dyn_cast<Instruction>(Addr)) {
+            auto DbgLoc = AddrInst->getDebugLoc();
+            I->setDebugLoc(DbgLoc);
+          } else
+            loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
+        }
+      } else
         loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
 
       DEBUG_WITH_TYPE("DBGLOC", dbgs() << "getDebugData for: " << *I
@@ -222,7 +230,7 @@ bool CarePass::runOnModule(Module &M) {
     }
   }
 
-  if (!hasDebugInfo) DbgInfoBuilder->finalize();
+  DbgInfoBuilder->finalize();
 
   // save CareM to .bc file
   std::string program = M.getName().ltrim("./").split('.').first.str();
@@ -494,4 +502,4 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
 
 char CarePass::ID = 0;
 
-static RegisterPass<CarePass> X("care", "care", false, false);
+static RegisterPass<CarePass> X("carepass", "carepass", false, false);
