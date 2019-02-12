@@ -6,4 +6,4 @@ test/frontend/*.tb
 test/frontend/*.dwarf
 test/frontend/*.so
 test/frontend/*.bc
-
+.vscode/c_cpp_properties.json
