@@ -21,9 +21,15 @@ message("libffi: " ${LIBFFI})
 find_library(LIBUNWIND unwind)
 message("libunwind: " ${LIBUNWIND})
 
+find_library(LIBELF elf)
+message("libelf: " ${LIBELF})
+
+find_library(LIBZ z)
+message("libz: " ${LIBZ})
+
 link_directories(
     ${LLVM_LIBRARY_DIRS}
     ${CARE_SOURCE_DIR}/rtable
 )
 set(CMAKE_C_FLAGS "-g -DDEBUG")
-target_link_libraries(CARERuntime ${UDIS_LIB} ${DWARF_LIB} ${MHASH_LIB} ${LIBUNWIND} rtable LLVMCore LLVMSupport)
+target_link_libraries(CARERuntime ${LIBUDIS} ${LIBDWARF} ${LIBMHASH} ${LIBFFI} ${LIBUNWIND} ${LIBELF} ${LIBZ} rtable LLVMCore LLVMSupport)

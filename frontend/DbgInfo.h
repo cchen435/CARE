@@ -42,7 +42,6 @@ class CAREDIBuilder {
 
  public:
   CAREDIBuilder(Module &M, int lang = dwarf::DW_LANG_C);
-  void init();
   ~CAREDIBuilder() {
     dbgs() << "Finalize CAREDIBuilder and Free DBuilder\n";
     delete DBuilder;

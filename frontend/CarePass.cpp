@@ -6,6 +6,8 @@
 #include <llvm/Support/FileSystem.h>
 
 #include <iomanip>
+#include <iostream>
+#include <fstream>
 #include <set>
 
 #include "CarePass.h"
@@ -41,11 +43,10 @@ void CarePass::initialize(Module &M) {
   // if the module has no debug data (by checking whether the
   // module dwarf version information), a DIBuilder will be created.
   hasDebugInfo = M.getDwarfVersion() ? true : false;
-  DbgInfoBuilder = new CAREDIBuilder(M);
   if (hasDebugInfo)
     getDbgInfo(M);
   else
-    DbgInfoBuilder->init();
+    DbgInfoBuilder = new CAREDIBuilder(M);
   CareM = new Module("Care", M.getContext());
   CareM->setTargetTriple(M.getTargetTriple());
   CareM->setDataLayout(M.getDataLayout());
@@ -148,6 +149,40 @@ void CarePass::getDbgInfo(Module &M) {
   });
 }
 
+DebugLoc CarePass::getNearbyDebugLoc(Instruction *Insn) {
+  DebugLoc Prev, Next;
+  Instruction *P = Insn;
+  while (P = P->getPrevNode()) {
+    dbgs() << "Prev: " << *P << "\n";
+    if (isMemAccInst(P)) break;
+    Prev = P->getDebugLoc();
+    if (Prev) break;
+  }
+
+  Instruction *N = Insn;
+  while (N = N->getNextNode()) {
+    dbgs() << "Next: " << *N << "\n";
+    if (isMemAccInst(N)) break;
+    Next = N->getDebugLoc();
+    if (Next) break;
+  }
+
+  if (Prev && Next) {
+    dbgs() << "Prev DebugLoc: " << *Prev << "\n";
+    dbgs() << "Next DebugLoc: " << *Next << "\n";
+    int line = (Prev->getLine() + Next->getLine()) / 2;
+    int col = (Prev->getColumn() + Next->getColumn()) / 2;
+    return DebugLoc::get(line, col, Prev->getScope());
+  } else if (Prev) {
+    dbgs() << "Prev DebugLoc: " << *Prev << "\n";
+    return Prev;
+  } else if (Next) {
+    dbgs() << "Next DebugLoc: " << *Next << "\n";
+    return Next;
+  }
+  return nullptr;
+}
+
 bool CarePass::runOnModule(Module &M) {
   initialize(M);
 
@@ -190,25 +225,23 @@ bool CarePass::runOnModule(Module &M) {
         // Debug data could be missed for some instruction even when compiled
         // with -g flag. Especially after some code optimizations.
         if (!loc) {
-          auto Addr = getPointerOperand(&*I);
-          DEBUG_WITH_TYPE("DBGLOC", dbgs() << "\n\nNo Debug Data for: " << *I
-                                           << "\n\tAddr: " << *Addr);
-          auto AddrInst = dyn_cast<Instruction>(Addr);
-          // is its addr operand has debug data ? if yes, use it for the mem
-          // access instruction
-          if (AddrInst) loc = AddrInst->getDebugLoc();
-          if (loc)
-            I->setDebugLoc(loc);
-          else {
+          DEBUG_WITH_TYPE(
+              "DBGLOC", dbgs() << "\n\nNo Debug Data for: " << *I
+                               << "\n\tSearching for its nearby instructions.");
+          loc = getNearbyDebugLoc(&*I);
+          if (!loc) {
             DIFunc = I->getFunction()->getSubprogram();
-            loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
-            DEBUG_WITH_TYPE("DBGLOC", dbgs()
-                                          << "\nNo Debug Data for: " << *I
-                                          << "\n\tand its Addr: " << *Addr
-                                          << "\n\tSet Dgb by CARE: " << *loc
-                                          << "\n\tFunction Type: " << *DIFunc);
+            static int Fline = 0;
+            static int Fcol = 0;
+            loc = DebugLoc::get(++Fline, ++Fcol, DIFunc);
+            DEBUG_WITH_TYPE("DBGLOC",
+                            dbgs() << "\n\nNo Debug Data for: " << *I
+                                   << "\n\tand so for its nearby instructions."
+                                   << "\n\tCreated a fake one: " << *loc
+                                   << "\n\tFunction Type: " << *DIFunc);
           }
           DEBUG_WITH_TYPE("DBGLOC", dbgs() << "\n\n");
+          I->setDebugLoc(loc);
         }
       } else  // if debug flag is not enabled
         loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
@@ -227,6 +260,11 @@ bool CarePass::runOnModule(Module &M) {
       });
       care_tb_add_record(rtb, key, kernel, pnames);
 
+      rktable += loc->getScope()->getFilename().str() +
+                 "\tLine: " + std::to_string(loc->getLine()) +
+                 "\tCol: " + std::to_string(loc->getColumn()) + "\t" +
+                 kernel->getName().str() + "\n";
+
       // promote the debug data to all of its binary users
       // since in x86 architecture, the binary operation could
       // be merged with a memort access instruction
@@ -243,22 +281,29 @@ bool CarePass::runOnModule(Module &M) {
     }
   }
 
-  DbgInfoBuilder->finalize();
+  if (!hasDebugInfo) DbgInfoBuilder->finalize();
 
   // save CareM to .bc file
+  dbgs() << "Module ID: " << M.getModuleIdentifier();
+  dbgs() << "Module Name: " << M.getName();
   std::string program = M.getName().ltrim("./").split('.').first.str();
   std::string FileName = "lib" + program + "_care.bc";
   std::error_code EC;
 
   dbgs() << "Writing CareM module to " << FileName << "\n";
   llvm::raw_fd_ostream OS(FileName, EC, llvm::sys::fs::F_None);
-  CareM->dump();
   WriteBitcodeToFile(CareM, OS);
   OS.flush();
 
   // save recovery table
   FileName = program + "_care.tb";
   care_tb_save(FileName, rtb);
+
+  FileName = program + "_care_raw.tb";
+  std::ofstream rkraw;
+  rkraw.open(FileName);
+  rkraw << rktable;
+  rkraw.close();
 
   DEBUG_WITH_TYPE("RTB", {
     dbgs() << "Recovery Table (" << FileName << "): \n";
@@ -476,10 +521,11 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
     case Instruction::GetElementPtr:
       Inst = IRB.CreateGEP(
           Operands[0],
-          std::vector<Value *>(Operands.begin() + 1, Operands.end()));
+          std::vector<Value *>(Operands.begin() + 1, Operands.end()), 
+          Insn->getName());
       break;
     case Instruction::Load:
-      Inst = IRB.CreateLoad(Operands[0]);
+      Inst = IRB.CreateLoad(Operands[0], Insn->getName());
       break;
     case Instruction::BitCast:
       Inst = IRB.CreateBitCast(Operands[0], Insn->getType());
@@ -503,6 +549,12 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
       break;
     case Instruction::Select:
       Inst = IRB.CreateSelect(Operands[0], Operands[1], Operands[2]);
+      break;
+    case Instruction::InsertElement:
+      Inst = IRB.CreateInsertElement(Operands[0], Operands[1], Operands[2]);
+      break;
+    case Instruction::ExtractElement:
+      Inst = IRB.CreateExtractElement(Operands[0], Operands[1]);
       break;
     case Instruction::SIToFP:
       Inst = IRB.CreateSIToFP(Operands[0],
@@ -535,7 +587,7 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
     case Instruction::Call:
       Callee = Operands.back();
       Operands.pop_back();
-      Inst = IRB.CreateCall(Callee, Operands);
+      Inst = IRB.CreateCall(Callee, Operands, Insn->getName());
       break;
 
     default:

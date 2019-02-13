@@ -44,12 +44,14 @@ struct CarePass : public ModulePass {
   // variable names when dbg (-g) is enabled
   // std::map<Value *, DbgValueInst *> DbgValueMap;
   std::map<Value *, DbgInfoIntrinsic *> DbgValueMap;
+  std::string rktable;
 
  private:
   void initialize(Module &M);
 
   bool isMemAccInst(Instruction *Insn);
   Value *getPointerOperand(Instruction *Insn);
+  DebugLoc getNearbyDebugLoc(Instruction *Insn);
 
   /**
    * when the program is compiled with -g flag this method is

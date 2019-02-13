@@ -650,13 +650,14 @@ int care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC, char **ret_file,
   int i, retval = 0;
 
   while ((retval = care_dw_get_next_cu_die(dwarf, &cu_die)) == DW_DLV_OK) {
+    retval = 0;
     dwarf_srclines(cu_die, &linebuf, &linecount, &error);
 
 #ifdef DEBUG_DW_LINE
     care_dw_print_line_table(dwarf, cu_die);
 #endif
 
-    for (i = 0; i < linecount; i++) {
+    for (i = 0; i < linecount - 1; i++) {
       dwarf_lineaddr(linebuf[i], &lineaddr, &error);
 
       if (!retval && lineaddr == PC) {
