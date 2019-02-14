@@ -300,7 +300,7 @@ int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
 #endif
 
   // clean the storage used by src
-  care_dw_dealloc_str(context->dwarf, src);
+  // care_dw_dealloc_str(context->dwarf, src);
 
   retval = care_tb_search_c(context->lib_table, key, &routine->funcTy,
                             &routine->params, &routine->n_params);

@@ -36,7 +36,7 @@ struct __care_dwarf {
   int fd;
   Dwarf_Debug dwarf_handle;
 };
-typedef struct __care_dwarf care_dwarf_t;
+typedef struct __care_dwarf *care_dwarf_t;
 
 /**
  * the context used by library
