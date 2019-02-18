@@ -14,8 +14,12 @@
 
 // ---------------- declaration of helper functions ---------------- //
 
-static Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC);
-static void care_dw_print_die(care_dwarf_t dwarf, Dwarf_Die die, int indent);
+care_dwarf_t care_dw_open(const char *file_name);
+Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC);
+Dwarf_Die care_dw_get_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC);
+Dwarf_Die care_dw_get_lexical_block(care_dwarf_t dwarf, Dwarf_Die subprogram,
+                                    Dwarf_Addr PC);
+void care_dw_print_die(care_dwarf_t dwarf, Dwarf_Die die, int indent);
 
 /**
  * libdwarf_print_error: the helper function to print error msg for
@@ -51,7 +55,6 @@ static int care_dw_is_mmx_reg(int reg_index) {
  * care_dw_open: open a dwarf file which is normally the executable file
  * on success, it will return an care_dwarf_t object, otherwise a nullptr
  * will be returned.
- *
  */
 care_dwarf_t care_dw_open(const char *file_name) {
   char errmsg[128];
@@ -82,23 +85,14 @@ care_dwarf_t care_dw_open(const char *file_name) {
 }
 
 /**
- * care_dw_close: close the file
- */
-void care_dw_close(care_dwarf_t dwarf) {
-  Dwarf_Error error;
-  dwarf_finish(dwarf->dwarf_handle, &error);
-  close(dwarf->fd);
-  free(dwarf);
-}
-
-/**
  * care_dw_get_cu: care_dw_get_cu is to find and return the DIE
  *                 represneting a compilation unit that contains
- *                 the instruction at PC
+ *                 the instruction at PC. It iterates over DIEs
+ *                 of CUs and check the address ranges of the CU
  * inputs: handle the Dwarf_Debug handler.
  *         PC the instruction address.
  */
-Dwarf_Die care_dw_get_cu(care_dwarf_t dwarf, Dwarf_Addr PC) {
+Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
   int retval = DW_DLV_ERROR;
   int trips = 0;
   Dwarf_Bool is_info = 1;  // find CU in .debug_info
@@ -116,11 +110,12 @@ Dwarf_Die care_dw_get_cu(care_dwarf_t dwarf, Dwarf_Addr PC) {
   Dwarf_Die CU;
   Dwarf_Half Tag;
 
-  while (true) {
+  while (true) {  // iterate over Compile Units
     retval = dwarf_next_cu_header_c(
         dwarf->dwarf_handle, is_info, &cu_header_length, &version,
         &abbrev_offset, &address_size, &length_size, &extension_size,
         &type_signature, &type_offset, &next_cu_header_offset, &error);
+
     if (retval == DW_DLV_ERROR) {
       fprintf(stdout, "dwarf_next_cu_header_c failed: %s\n",
               dwarf_errmsg(error));
@@ -130,26 +125,32 @@ Dwarf_Die care_dw_get_cu(care_dwarf_t dwarf, Dwarf_Addr PC) {
     if (retval == DW_DLV_NO_ENTRY) trips++;
     if (trips == 2) return NULL;
 
-    // get the first DIE in current Compilation Unit
+    // get the first DIE in current Compilation Unit, which
+    // is also the DIE representing the Compile Unit
     retval = dwarf_siblingof(dwarf->dwarf_handle, NULL, &CU, &error);
+
+    // No DIE found in curr CU, check next
+    if (retval == DW_DLV_NO_ENTRY) continue;
+
     if (retval == DW_DLV_ERROR) {
       fprintf(stdout, "Failed to get the First DIE in a CU: %s\n",
               dwarf_errmsg(error));
       continue;
     }
 
-    // No DIE found in curr CU, check next
-    if (retval == DW_DLV_NO_ENTRY) continue;
-
+    // double check whether the DIE is representing a compile unit
     retval = dwarf_tag(CU, &Tag, &error);
-    if (retval == DW_DLV_ERROR)
+    if (retval == DW_DLV_ERROR) {
       fprintf(stdout, "Failed to get the TAG of DIE: %s", dwarf_errmsg(error));
-
+      continue;
+    }
     if (Tag != DW_TAG_compile_unit) continue;
 
+#if DEBUG_DWARF
     char *CU_name;
     dwarf_diename(CU, &CU_name, &error);
     fprintf(stdout, "CU Name: %s\n", CU_name);
+#endif
 
     Dwarf_Bool has_low_pc, has_high_pc, has_range;
     retval = dwarf_hasattr(CU, DW_AT_low_pc, &has_low_pc, &error);
@@ -171,34 +172,141 @@ Dwarf_Die care_dw_get_cu(care_dwarf_t dwarf, Dwarf_Addr PC) {
       dwarf_lowpc(CU, &lowpc, &error);
       dwarf_highpc_b(CU, &highpc, &form, &class, &error);
       if (class == DW_FORM_CLASS_CONSTANT) highpc += lowpc;
-      fprintf(stderr, "Debug: lowpc of CU: %p, hihgpc of CU: %p\n", lowpc,
+      fprintf(stderr, "Debug: lowpc of CU: %llx, hihgpc of CU: %llx\n", lowpc,
               highpc);
       if (lowpc <= PC && highpc >= PC) return CU;
     } else if (has_range) {
       Dwarf_Attribute attr;
+      dwarf_attr(CU, DW_AT_ranges, &attr, &error);
+
+#if DEBUG_DWARF
       Dwarf_Half version, offset_size, form;
       char *form_name;
-
-      dwarf_attr(CU, DW_AT_ranges, &attr, &error);
       dwarf_whatform(attr, &form, &error);
       dwarf_get_version_of_die(CU, &version, &offset_size);
       dwarf_get_FORM_name(form, &form_name);
       printf("Form: %x (%s) \t Form Class: %d\n", form, form_name,
              dwarf_get_form_class(version, attr, offset_size, form));
+#endif
 
       Dwarf_Unsigned offset;
+      Dwarf_Ranges *ranges;
+      Dwarf_Signed count;
+      Dwarf_Unsigned bytes;
       dwarf_global_formref(attr, &offset, &error);
-      dwarf_get_ranges();
 
-      exit(1);
-      // TODO: Add code to get ranges
+      retval = dwarf_get_ranges_a(dwarf->dwarf_handle, offset, CU, &ranges,
+                                  &count, &bytes, &error);
+      if (retval == DW_DLV_NO_ENTRY) {
+        fprintf(stdout, "No ranges found\n");
+        continue;
+      }
+      if (retval == DW_DLV_ERROR) {
+        fprintf(stdout, "dwarf_get_ranges_a failed: %s\n", dwarf_errmsg(error));
+        continue;
+      }
+
+      for (unsigned i = 0; i < count; i++) {
+        Dwarf_Ranges *cur = ranges + i;
+#if DEBUG_DWARF
+        printf("Ranges: type -- %d, addr1 -- %llx, addr -- %llx\n",
+               cur->dwr_type, cur->dwr_addr1, cur->dwr_addr2);
+#endif
+        if (cur->dwr_type == DW_RANGES_END) break;
+        if (cur->dwr_addr1 <= PC && cur->dwr_addr2 >= PC) return CU;
+      }
+      dwarf_ranges_dealloc(dwarf->dwarf_handle, ranges, count);
     }
   }
+  return NULL;
 }
 
-static int care_dw_get_locdesc(care_context_t *env, Dwarf_Die die,
+/*
+ * care_dw_get_cu_subprogram_die: get the DIE representing an subprogram,
+ *                             which contains the instruction pointed
+ *                             by PC, and the DIE for the CU of subprogram
+ *
+ */
+int care_dw_get_cu_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC,
+                                  Dwarf_Die *CU, Dwarf_Die *subprogram) {
+  Dwarf_Global *globals;
+  Dwarf_Error error;
+  Dwarf_Signed gcnt = -1;
+  Dwarf_Die tmp = NULL;
 
-                               Dwarf_Locdesc_c *locdesc) {
+  Dwarf_Half tag, form;
+  // the offsets for DIEs of the global object
+  // and the CU that contains the object
+  Dwarf_Off die_offset, cu_offset;
+  Dwarf_Off cu_offset;
+  Dwarf_Addr lowpc, highpc;
+  enum Dwarf_Form_Class class;
+  Dwarf_Debug Dbg = dwarf->dwarf_handle;
+  char *name, *tag_name;
+  int i, retval;
+
+  *CU = NULL;
+  *subprogram = NULL;
+
+  // this dwarf interface is to get static functions, it looks at
+  // .debug_funcnames section.
+  retval = dwarf_get_globals(Dbg, &globals, &gcnt, &error);
+
+  if (retval == DW_DLV_NO_ENTRY) {  // .debug_funcnames has no entries
+    fprintf(stdout, "No subprogram found for instruction at %llx\n", PC);
+    return EXIT_FAILURE;
+  }
+
+  if (retval == DW_DLV_NOCOUNT) {
+    fprintf(stdout, "Error to get the function for %llu (%s)\n", PC,
+            dwarf_errmsg(error));
+    return EXIT_FAILURE;
+  }
+
+  for (i = 0; i < gcnt; i++) {
+    // get the name for the global and its DIE offset,
+    // which is necessary to retrive the DIE for it so
+    // we can check whether its a expected DIE
+    retval = dwarf_global_name_offsets(globals[i], &name, &die_offset,
+                                       &cu_offset, &error);
+
+    if (retval != DW_DLV_OK) {
+      fprintf(stdout, "Failed to get the global name and offset (%s)\n",
+              dwarf_errmsg(error));
+      continue;
+    }
+
+    retval = dwarf_offdie(Dbg, die_offset, &tmp, &error);
+    dwarf_tag(tmp, &tag, &error);
+    dwarf_lowpc(tmp, &lowpc, &error);
+    dwarf_highpc_b(tmp, &highpc, &form, &class, &error);
+    if (class == DW_FORM_CLASS_CONSTANT) highpc = highpc + lowpc;
+
+    if (tag == DW_TAG_subprogram && lowpc <= PC && highpc >= PC) {
+      *subprogram = tmp;
+      dwarf_offdie(Dbg, cu_offset, CU, &error);
+      return EXIT_SUCCESS;
+    }
+    dwarf_dealloc(Dbg, name, DW_DLA_STRING);
+    dwarf_dealloc(Dbg, globals[i], DW_DLA_FUNC);
+  }
+  dwarf_dealloc(Dbg, globals, DW_DLA_LIST);
+  return EXIT_FAILURE;
+}
+
+/**
+ * care_dw_close: close the file
+ */
+void care_dw_close(care_dwarf_t dwarf) {
+  Dwarf_Error error;
+  dwarf_finish(dwarf->dwarf_handle, &error);
+  close(dwarf->fd);
+  free(dwarf);
+}
+
+int care_dw_get_locdesc(care_context_t *env, Dwarf_Die die,
+
+                        Dwarf_Locdesc_c *locdesc) {
   int retval, found = DW_DLV_NO_ENTRY;
   Dwarf_Error error;
   Dwarf_Addr lopc, hipc;
@@ -333,6 +441,7 @@ char *care_dw_get_form_class_str(enum Dwarf_Form_Class class) {
     default:
       break;
   }
+  return ret;
 }
 
 //------------------ local function definition --------------------
@@ -506,7 +615,7 @@ static Dwarf_Die care_dw_search_var(care_dwarf_t dwarf, Dwarf_Die root,
   }
 
   // search the child if it has, otherwise return NULL
-  if (retval = dwarf_child(root, &child, &error) == DW_DLV_OK)
+  if ((retval = dwarf_child(root, &child, &error)) == DW_DLV_OK)
     tmp = care_dw_search_var(dwarf, child, varname);
   else
     return NULL;
@@ -549,83 +658,6 @@ static Dwarf_Die care_dw_get_var_die(care_dwarf_t dwarf, Dwarf_Addr PC,
 }
 
 // -------------- some exported helper function -------------
-
-/*
- * care_dwarf_get_scope: it is to get the DIE representing an scope, e.g., a
- * subprogram, that contains the instruction at PC
- */
-Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC) {
-  int i, retval;
-  Dwarf_Global *globals;
-  Dwarf_Error error;
-  Dwarf_Signed gcnt = -1;
-  Dwarf_Die result = NULL, tmp = NULL;
-
-  char *global_name;
-  Dwarf_Off global_die_offset;  // the offset for DIE representing a global
-  Dwarf_Off global_cu_offset;   // the offset for DIE representing
-                                // compilation-unit that contains the global
-  Dwarf_Half global_tag;
-  const char *global_tag_name;
-
-  Dwarf_Addr lowpc, highpc;
-  Dwarf_Half form;
-  enum Dwarf_Form_Class class;
-
-  // this dwarf interface is to get static functions, it looks at
-  // .debug_funcnames section.
-  retval = dwarf_get_globals(dwarf->dwarf_handle, &globals, &gcnt, &error);
-
-  if (retval == DW_DLV_NO_ENTRY) {  // .debug_funcnames has no entries
-    errx(EXIT_FAILURE, "No scope found for instruction at %llx (%lld)\n", PC,
-         gcnt);
-  }
-
-  if (retval == DW_DLV_NOCOUNT) {
-    errx(EXIT_FAILURE,
-         "Error to get the function for %llu (code: %llu, msg: %s)\n", PC,
-         dwarf_errno(error), dwarf_errmsg(error));
-  }
-
-  for (i = 0; i < gcnt; i++) {
-    retval =
-        dwarf_global_name_offsets(globals[i], &global_name, &global_die_offset,
-                                  &global_cu_offset, &error);
-
-    if (retval != DW_DLV_OK) {
-      printf(
-          "Error with get function name and offsets (maybe no entry found). "
-          "Code: %llu, Message: %s",
-          dwarf_errno(error), dwarf_errmsg(error));
-      continue;
-    }
-
-    retval = dwarf_offdie(dwarf->dwarf_handle, global_die_offset, &tmp, &error);
-
-    dwarf_tag(tmp, &global_tag, &error);
-
-    if (global_tag == DW_TAG_subprogram) {
-      dwarf_lowpc(tmp, &lowpc, &error);
-      dwarf_highpc_b(tmp, &highpc, &form, &class, &error);
-
-      if (class == DW_FORM_CLASS_CONSTANT) highpc = highpc + lowpc;
-
-      if (lowpc < PC && highpc > PC) {
-        if (result == NULL)
-          result = tmp;
-        else {
-          errx(EXIT_FAILURE, "find two functions containing the same PC");
-        }
-      }
-    }
-
-    dwarf_dealloc(dwarf->dwarf_handle, global_name, DW_DLA_STRING);
-    dwarf_dealloc(dwarf->dwarf_handle, globals[i], DW_DLA_FUNC);
-  }
-
-  dwarf_dealloc(dwarf->dwarf_handle, globals, DW_DLA_LIST);
-  return result;
-}
 
 /**
  * care_dw_get_next_cu_die: it iterates over each compile unit(CU)

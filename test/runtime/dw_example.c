@@ -6,5 +6,6 @@ int main(int argc, char **argv) {
   char *file = argv[2];
   care_dwarf_t dwarf = care_dw_open(file);
   Dwarf_Die CU = care_dw_get_cu(dwarf, PC);
+  care_dw_print_die(dwarf, CU, 0);
   return 0;
 }
