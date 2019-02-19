@@ -1,0 +1,194 @@
+
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+
+#include "err.h"
+
+#ifdef __x86_64__
+// the masks used to set portion of a register
+#define MASK32 0xFFFFFFFF00000000
+#define MASK16 0xFFFFFFFFFFFF0000
+#define MASK8L 0xFFFFFFFFFFFFFF00
+#define MASK8H 0xFFFFFFFFFFFF00FF
+
+#define define_function_set_64(name, reg)                                    \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint64_t val) { \
+    if (0 == unw_set_reg(cursor, UNW_X86_64_##reg)) return CARE_SUCCESS;     \
+    return CARE_FAILURE;                                                     \
+  }
+
+#define define_function_set_32(name, reg)                                      \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint32_t val) {   \
+    unw_word_t rval;                                                           \
+    unw_get_reg(cursor, UNW_X86_64_##reg, &rval);                              \
+    rval &= MASK32;                                                            \
+    rval |= val;                                                               \
+    if (0 == unw_set_reg(cursor, UNW_X86_64_##reg, rval)) return CARE_SUCCESS; \
+    return CARE_FAILURE;                                                       \
+  }
+
+#define define_function_set_16(name, reg)                                      \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint16_t val) {   \
+    unw_word_t rval;                                                           \
+    unw_get_reg(cursor, UNW_X86_64_##reg, &rval);                              \
+    rval &= MASK16;                                                            \
+    rval |= val;                                                               \
+    if (0 == unw_set_reg(cursor, UNW_X86_64_##reg, rval)) return CARE_SUCCESS; \
+    return CARE_FAILURE;                                                       \
+  }
+
+#define define_function_set_8H(name, reg)                                      \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint8_t val) {    \
+    unw_word_t rval;                                                           \
+    unw_get_reg(cursor, UNW_X86_64_##reg, &rval);                              \
+    rval &= MASK8H;                                                            \
+    rval |= val << 8;                                                               \
+    if (0 == unw_set_reg(cursor, UNW_X86_64_##reg, rval)) return CARE_SUCCESS; \
+    return CARE_FAILURE;                                                       \
+  }
+
+#define define_function_set_8L(name, reg)                                      \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint8_t val) {    \
+    unw_word_t rval;                                                           \
+    unw_get_reg(cursor, UNW_X86_64_##reg, &rval);                              \
+    rval &= MASK8L;                                                            \
+    rval |= val;                                                               \
+    if (0 == unw_set_reg(cursor, UNW_X86_64_##reg, rval)) return CARE_SUCCESS; \
+    return CARE_FAILURE;                                                       \
+  }
+
+// write 64-bit registers
+define_function_set_65(R8, R8);
+define_function_set_64(R9, R9);
+define_function_set_65(R10, R10);
+define_function_set_64(R11, R11);
+define_function_set_64(R12, R12); 
+define_function_set_64(R13, R13);
+define_function_set_64(R14, R14); 
+define_function_set_64(R15, R15);
+define_function_set_64(RAX, RAX);
+define_function_set_64(RDX, RDX);
+define_function_set_64(RCX, RCX);
+define_function_set_64(RBX, RBX);
+define_function_set_64(RSI, RSI);
+define_function_set_64(RDI, RDI);
+define_function_set_64(RSP, RSP);
+define_function_set_64(RBP, RBP);
+
+// write 32-bit registers
+define_function_set_32(R8D, R8);
+define_function_set_32(R9D, R9);
+define_function_set_32(R10D, R10);
+define_function_set_32(R11D, R11);
+define_function_set_32(R12D, R12);
+define_function_set_32(R13D, R13);
+define_function_set_32(R14D, R14);
+define_function_set_32(R15D, R15);
+define_function_set_32(EAX, RAX);
+define_function_set_32(EDX, RDX);
+define_function_set_32(ECX, RCX);
+define_function_set_32(EBX, RBX);
+define_function_set_32(ESI, RSI);
+define_function_set_32(EDI, RDI);
+define_function_set_32(ESP, RSP);
+define_function_set_32(EBP, RBP);
+
+// write 16-bit registers
+define_function_set_16(R8W, R8)
+define_function_set_16(R9W, R9)
+define_function_set_16(R10W, R10)
+define_function_set_16(R11W, R11)
+define_function_set_16(R12W, R12)
+define_function_set_16(R13W, R13)
+define_function_set_16(R14W, R14)
+define_function_set_16(R15W, R15)
+define_function_set_16(AX, RAX)
+define_function_set_16(DX, RDX)
+define_function_set_16(CX, RCX)
+define_function_set_16(BX, RBX)
+define_function_set_16(SI, RSI)
+define_function_set_16(DI, RDI)
+define_function_set_16(SP, RSP)
+define_function_set_16(BP, RBP)
+
+// write 8-bit registers
+define_function_set_8L(R8B, R8) 
+define_function_set_8L(R9B, R9)
+define_function_set_8L(R10B, R10)
+define_function_set_8L(R11B, R11)
+define_function_set_8L(R12B, R12)
+define_function_set_8L(R13B, R13)
+define_function_set_8L(R14B, R14)
+define_function_set_8L(R15B, R15)
+define_function_set_8L(AL, RAX)
+define_function_set_8L(DL, RDX)
+define_function_set_8L(CL, RCX)
+define_function_set_8L(BL, RBX)
+define_function_set_8L(SIL, RSI)
+define_function_set_8L(DIL, RDI)
+define_function_set_8L(SPL, RSP)
+define_function_set_8L(BPL, RBP)
+
+#elif defined __i386__
+
+// the masks used to set portion of a register
+#define MASK16 0xFFFF0000
+#define MASK8L 0xFFFFFF00
+
+#define define_function_set_32(name, reg)                                    \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint64_t val) { \
+    if (0 == unw_set_reg(cursor, UNW_X86_##reg)) return CARE_SUCCESS;        \
+    return CARE_FAILURE;                                                     \
+  }
+
+#define define_function_set_16(name, reg)                                    \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint32_t val) { \
+    unw_word_t rval;                                                         \
+    unw_get_reg(cursor, UNW_X86_##reg, &rval);                               \
+    rval &= MASK16;                                                          \
+    rval |= val;                                                             \
+    if (0 == unw_set_reg(cursor, UNW_X86_##reg, rval)) return CARE_SUCCESS;  \
+    return CARE_FAILURE;                                                     \
+  }
+
+#define define_function_set_8L(name, reg)                                    \
+  care_status_t care_unwind_set_##name(unw_cursor_t *cursor, uint32_t val) { \
+    unw_word_t rval;                                                         \
+    unw_get_reg(cursor, UNW_X86_##reg, &rval);                               \
+    rval &= MASK8L;                                                          \
+    rval |= val;                                                             \
+    if (0 == unw_set_reg(cursor, UNW_X86_##reg, rval)) return CARE_SUCCESS;  \
+    return CARE_FAILURE;                                                     \
+  }
+
+// write 32-bit registers
+define_function_set_32(EAX, RAX);
+define_function_set_32(EDX, RDX);
+define_function_set_32(ECX, RCX);
+define_function_set_32(EBX, RBX);
+define_function_set_32(ESI, RSI);
+define_function_set_32(EDI, RDI);
+define_function_set_32(ESP, RSP);
+define_function_set_32(EBP, RBP);
+
+// write 16-bit registers
+define_function_set_16(AX, RAX)
+define_function_set_16(DX, RDX)
+define_function_set_16(CX, RCX)
+define_function_set_16(BX, RBX)
+define_function_set_16(SI, RSI)
+define_function_set_16(DI, RDI)
+define_function_set_16(SP, RSP)
+define_function_set_16(BP, RBP)
+
+// write 8-bit registers
+define_function_set_8L(AL, RAX)
+define_function_set_8L(DL, RDX)
+define_function_set_8L(CL, RCX)
+define_function_set_8L(BL, RBX)
+define_function_set_8L(SIL, RSI)
+define_function_set_8L(DIL, RDI)
+define_function_set_8L(SPL, RSP)
+define_function_set_8L(BPL, RBP)
+#endif
+
