@@ -24,10 +24,17 @@
 
 #include "tb.h"
 
+struct _log {
+  char *inject;
+  char *key;
+  care_status_t status;
+};
+typedef struct _log care_log_t;
+
 /**
  * recovery method
  */
-typedef enum _method { INVALID = 0, REDO = 1, UNWIND = 2 } care_method_t;
+typedef enum _method { M_INVALID = 0, M_REDO = 1, M_UNWIND = 2 } care_method_t;
 
 struct __care_scope {
   Dwarf_Die scope;
@@ -57,6 +64,7 @@ typedef struct __care_machine care_machine_t;
 struct __care_context {
   /* process context saved by OS when generating a signal */
   care_machine_t machine;
+  uint64_t pc;  // the program counter, for quick access
 
   /* file descriptors */
   care_dwarf_t dwarf;   // the file descriptor for dwarf
@@ -66,8 +74,8 @@ struct __care_context {
   /* udis86 disassember objects */
   const char *insn;
 
-  uint64_t pc;  // the program counter
-  care_scope_t *scopes;
+  care_log_t log;
+  FILE *logfp;
 };
 typedef struct __care_context care_context_t;
 

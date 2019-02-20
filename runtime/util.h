@@ -15,8 +15,8 @@
  * output: the care context which is a simply copy of processor context and
  *         contains additional recovery table and library handler.
  */
-void care_util_init(care_context_t *context, siginfo_t *sig_info,
-                    void *sig_context);
+care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
+                             void *sig_context);
 
 /**
  * care_util_finish: clean the library before exit
@@ -35,8 +35,8 @@ void care_util_finish(care_context_t *context);
  *         the recorvy method, and the operand to be udated through
  *         target argument if the recovery method is REDO;
  */
-care_method_t care_util_diagnose(int signo, care_context_t *context,
-                                 ud_operand_t *target);
+care_status_t care_util_diagnose(int signo, care_context_t *context,
+                                 care_target_t *target, care_method_t *method);
 
 void care_util_unwind(int steps);
 
@@ -52,7 +52,8 @@ void care_util_unwind(int steps);
  * value is returned. The recovery routine info is returned through the routine
  *         argument.
  */
-int care_util_find_routine(care_context_t *context, care_routine_t *routine);
+care_status_t care_util_find_routine(care_context_t *context,
+                                     care_routine_t *routine);
 
 /**
  * care_util_exec_routine: execute the recovery routine using ffi library.
@@ -65,13 +66,13 @@ int care_util_find_routine(care_context_t *context, care_routine_t *routine);
  *         will return non-zero value if the recovery routine is executed
  *         successfully
  */
-int care_util_exec_routine(care_context_t *env, care_routine_t routine,
-                           void *rvalue);
+care_status_t care_util_exec_routine(care_context_t *env,
+                                     care_routine_t routine, void *rvalue);
 
 /**
  * care_util_update: update the target with the correct value
  */
-int care_util_update(care_context_t *env, care_target_t *target,
-                     uint64_t value);
+care_status_t care_util_update(care_context_t *env, care_target_t *target,
+                               uint64_t value);
 
 #endif

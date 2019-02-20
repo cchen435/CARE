@@ -2,7 +2,7 @@
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 
-#include "err.h"
+#include "errx.h"
 
 #include "unwind.def"
 

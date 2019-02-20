@@ -1,9 +1,8 @@
 #ifndef _DBG_H_
 #define _DBG_H_
 
+#include "errx.h"
 #include "types.h"
-
-extern Dwarf_Die care_dw_get_cu(care_dwarf_t dwarf, Dwarf_Addr PC);
 
 /*
  * care_dw_open: open the debug file by calling dwarf_init function
@@ -29,14 +28,12 @@ extern void *care_dw_eval_location(care_context_t *env, Dwarf_Die var_die);
 /**
  * care_dw_get_src_info: get debug line info
  */
-extern int care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC,
-                                char **ret_file, int *ret_line,
-                                int *ret_column);
+extern care_status_t care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC,
+                                          char **ret_file, int *ret_line,
+                                          int *ret_column);
 
 /**
  * --------------------- helper functions ------------------------------------
  */
 extern void care_dw_print_die(care_dwarf_t handler, Dwarf_Die die, int indent);
-extern int care_dw_get_next_cu_die(care_dwarf_t handler, Dwarf_Die *cu_die);
-extern Dwarf_Die care_dw_get_func(care_dwarf_t dwarf, Dwarf_Addr PC);
 #endif

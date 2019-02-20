@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #include "dw.h"
-#include "err.h"
+#include "errx.h"
 #include "types.h"
 #include "udis.h"
 #include "util.h"
@@ -33,10 +33,6 @@
 #elif __i386__
 #define CARE_REG_IP REG_EIP
 #endif
-
-char *expr_path = NULL;
-char *worker = NULL;
-char *injection = NULL;
 
 // ------------------ local functions definition -------------------
 /**
@@ -164,8 +160,8 @@ static ffi_type *care_util_get_ffi_type(enum TypeID pbTyID, int width) {
  *
  * it returns EXIT_SUCCESS success
  */
-int care_util_init(care_context_t *context, siginfo_t *sig_info,
-                   void *sig_context) {
+care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
+                             void *sig_context) {
   /**
    * the glibc variable containing the name of of the program. We used
    * it to derive recovery library file name and dwarf file name
@@ -174,14 +170,22 @@ int care_util_init(care_context_t *context, siginfo_t *sig_info,
   extern char *program_invocation_name;
   char filename[128];
 
-  expr_path = getenv("CARE_EXPR_PATH");
-  worker = getenv("CARE_WORKER_ID");
-  injection = getenv("CARE_INJECTION_ID");
+  char *expr_path = getenv("CARE_EXPR_PATH");
+  char *worker = getenv("CARE_WORKER_ID");
+  char *injection = getenv("CARE_INJECTION_ID");
+  sprintf(filename, "%s/worker_%s_record.care", expr_path, worker);
+
+  context->logfp = fopen(filename, "a");
+
+  context->log.inject = strdup(injection);
 
   // expr environment setup error
-  if (!expr_path || !worker || !injection) return CARE_ENV_NULL;
+  if (!expr_path || !worker || !injection) {
+    care_err_set_code(CARE_NO_ENV);
+    return CARE_FAILURE;
+  }
 
-#if DEBUG_UTIL
+#if DEBUG_ENV
   fprintf(stderr, "Expr Path: %s, Worker: %s, Injection: %s\n\n", expr_path,
           worker, injection);
 #endif
@@ -193,34 +197,40 @@ int care_util_init(care_context_t *context, siginfo_t *sig_info,
   context->machine.gregs = &(mcontext->gregs);
   context->machine.stack = &(ucontext->uc_stack);
   context->pc = (mcontext->gregs)[CARE_REG_IP];
+
   // initialize dwarf library
   context->dwarf = care_dw_open(program_invocation_name);
+  if (context->dwarf == NULL) {
+    care_err_set_code(CARE_NO_DBG);
+    return CARE_FAILURE;
+  }
+
   // loading recovery table
   sprintf(filename, "%s.tb", program_invocation_name);
   context->rtable = care_tb_load_c(filename);
-
-  if (context->dwarf == NULL) return CARE_DWARF_NULL;
-  if (context->rtable == NULL) return CARE_TABLE_NULL;
-
-  fprintf(stderr, "CARE is to recover %s [pc: 0x%lx]\n", __progname,
-          context->pc);
-
-#ifdef DEBUG_RTB
-  care_tb_print_c(context->lib_table);
-#endif
+  if (context->rtable == NULL) {
+    care_err_set_code(CARE_NO_TBL);
+    return CARE_FAILURE;
+  }
 
   // loading recovery library
   sprintf(filename, "./lib%s.so", __progname);
   context->rlib = dlopen(filename, RTLD_LAZY);
-  if (context->rlib == NULL) return CARE_RKLIB_NULL;
+  if (context->rlib == NULL) {
+    care_err_set_code(CARE_NO_LIB);
+    return CARE_FAILURE;
+  }
+
+  return CARE_SUCCESS;
 }
 
 /**
  * care_util_finish: clean the resources utilized by libcare
  */
 void care_util_finish(care_context_t *context) {
-  care_dw_close(context->dwarf);
-  dlclose(context->rlib);
+  if (context->dwarf) care_dw_close(context->dwarf);
+  if (context->rlib) dlclose(context->rlib);
+  if (context->logfp) fclose(context->logfp);
 }
 
 /**
@@ -236,13 +246,18 @@ void care_util_finish(care_context_t *context) {
  * memory location. (note: hypothesis, for SIGSEGV, it should be register only,
  * and  for SIGFPE, it could be either register or memory location )
  */
-care_method_t care_util_diagnose(int signo, care_context_t *context,
-                                 care_target_t *target) {
+care_status_t care_util_diagnose(int signo, care_context_t *context,
+                                 care_target_t *target, care_method_t *method) {
   ud_t ud_obj;       // the udis86 object
   ud_type_t ud_reg;  // the register naming in udis namespace
   int libc_reg;      // the register naming in libc namespace
 
-  if (care_util_is_in_library((void *)context->pc)) return UNWIND;
+  *method = M_INVALID;
+
+  if (care_util_is_in_library((void *)context->pc)) {
+    *method = M_UNWIND;
+    return CARE_SUCCESS;
+  }
 
   // disassemble the instruction
   care_ud_setup(&ud_obj);
@@ -252,15 +267,21 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
 #if DEBUG_UTIL
   fprintf(stderr, "Instruction: %s\n", context->insn);
 #endif
-
+  care_target_t *tmp;
   // which operand is the potential interesting code to be updated
   if (signo == SIGSEGV)
-    *target = *(care_target_t *)care_ud_get_mem_op(&ud_obj);
+    tmp = (care_target_t *)care_ud_get_mem_op(&ud_obj);
   else if (signo == SIGFPE)
-    *target = *(care_target_t *)care_ud_get_divident(&ud_obj);
+    tmp = (care_target_t *)care_ud_get_divident(&ud_obj);
 
-  if (target == NULL) return 0;
-  return REDO;
+  if (tmp == NULL) {
+    care_err_set_code(CARE_NO_OPR);
+    return CARE_FAILURE;
+  }
+
+  *method = M_REDO;
+  *target = *tmp;
+  return CARE_SUCCESS;
 }
 
 /**
@@ -275,7 +296,8 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
  * value is returned. The recovery routine info is returned through the routine
  *         argument.
  */
-int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
+care_status_t care_util_find_routine(care_context_t *context,
+                                     care_routine_t *routine) {
   char buf[256];
   int retval;
   char *src = NULL;
@@ -289,15 +311,16 @@ int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
   retval = care_dw_get_src_info(context->dwarf, PC, &src, &line, &column);
   (fname = strrchr(src, '/')) ? ++fname : (fname = src);
 
-#ifdef DEBUG_DWARF
+#ifdef DEBUG_RK
   fprintf(stderr, "Build Key from:\n\tFile: %s\n\tLine: %d\n\tColumn: %d\n",
           fname, line, column);
 #endif
 
   sprintf(buf, "%s/%d/%d", fname, line, column);
+  context->log.key = strdup(buf);
   care_util_hash(buf, key);
 
-#ifdef DEBUG
+#ifdef DEBUG_RK
   fprintf(stderr, "Key: ");
   for (unsigned i = 0; i < 32; i++) fprintf(stderr, "%c", key[i]);
   fprintf(stderr, "\n");
@@ -306,22 +329,25 @@ int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
   // clean the storage used by src
   // care_dw_dealloc_str(context->dwarf, src);
 
-  retval = care_tb_search_c(context->lib_table, key, &routine->funcTy,
+  retval = care_tb_search_c(context->rtable, key, &routine->funcTy,
                             &routine->params, &routine->n_params);
 
-#ifdef DEBUG
+#ifdef DEBUG_RK
   if (!retval)
     fprintf(stderr, "Recovery Routine: Not Found\n");
   else {
-    fprintf(stderr, "Recovery Routine:\n\tFunction: %p\n\tParams: ",
+    fprintf(stderr, "Recovery Routine:\n\tFunction: %s\n\tParams: ",
             care_tb_get_function_name_c(routine->funcTy));
     for (unsigned i = 0; i < routine->n_params; i++) {
       fprintf(stderr, "%s ", routine->params[i]);
     }
   }
 #endif
-
-  return retval;
+  if (!retval) {
+    care_err_set_code(CARE_NO_KEN);
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 /**
@@ -335,8 +361,8 @@ int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
  *         will return non-zero value if the recovery routine is executed
  *         successfully
  */
-int care_util_exec_routine(care_context_t *env, care_routine_t routine,
-                           void *rvalue) {
+care_status_t care_util_exec_routine(care_context_t *env,
+                                     care_routine_t routine, void *rvalue) {
   ffi_cif cif;
 
   // for ffi function signature
@@ -372,8 +398,8 @@ int care_util_exec_routine(care_context_t *env, care_routine_t routine,
   // initialize the cif object
   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, routine.n_params, rtype, argtypes) !=
       FFI_OK) {
-    errx(EXIT_FAILURE, "%s: failed to initilize ffi cif (msg: %s) \n", __func__,
-         strerror(errno));
+    care_err_set_code(CARE_NO_FFI);
+    return CARE_FAILURE;
   }
 
   // prepareing arguments, args should initialized with pointers to where the
@@ -384,20 +410,20 @@ int care_util_exec_routine(care_context_t *env, care_routine_t routine,
 
   // get function pointer
   symbol = care_tb_get_function_name_c(routine.funcTy);
-  func = dlsym(env->lib_handle, symbol);
+  func = dlsym(env->rlib, symbol);
 
   ffi_call(&cif, func, rvalue, args);
 
   free(argtypes);
   free(args);
-  return 1;
+  return CARE_SUCCESS;
 }
 
 /**
  * care_util_update: a general inteface to update and operand
  */
-int care_util_update(care_context_t *env, care_target_t *target,
-                     uint64_t value) {
+care_status_t care_util_update(care_context_t *env, care_target_t *target,
+                               uint64_t value) {
   /**
    * in udis86, an operand could be one of 6 types:
    * 1. UD_OP_MEM. A memory operand
@@ -421,8 +447,11 @@ int care_util_update(care_context_t *env, care_target_t *target,
   if (target->type == UD_OP_REG) {
     ud_reg = target->base;
     if (!care_ud_is_gpr(ud_reg)) {
-      errx(EXIT_FAILURE, "Non-GPR instruction is not handled: %s\n", env->insn);
-      // ud_insn_asm(&env->ud_obj));
+      char buf[256];
+      sprintf(buf, "Non-GPR Instruction is not handled: %s.", env->insn);
+      care_err_set_external_msg(buf);
+      care_err_set_code(CARE_INV_INST);
+      return CARE_FAILURE;
     }
   } else if (target->type == UD_OP_MEM) {
     // retrieving offset
@@ -441,8 +470,14 @@ int care_util_update(care_context_t *env, care_target_t *target,
       case 64:
         offset = (int64_t)target->lval.sqword;
         break;
-      default:
-        errx(EXIT_FAILURE, "Wrong register width\n");
+      default: {
+        char buf[256];
+        sprintf(buf, "Unsupported width in offset (%d) of mem operand",
+                target->offset);
+        care_err_set_external_msg(buf);
+        care_err_set_code(CARE_INV_INST);
+        return CARE_FAILURE;
+      }
     }
     val -= offset;
 
@@ -454,11 +489,13 @@ int care_util_update(care_context_t *env, care_target_t *target,
       ud_reg = target->base;
       libc_reg = care_ud_translate(ud_reg);
       if (care_ud_is_gpr(ud_reg))
-        base = (int64_t)(*env->gregs)[libc_reg];
+        base = (int64_t)(*env->machine.gregs)[libc_reg];
       else {
-        errx(EXIT_FAILURE, "Non-GPR instruction involved (not handled): %s\n",
-             env->insn);
-        // ud_insn_asm(&env->ud_obj));
+        char buf[256];
+        sprintf(buf, "Non-GPR Instruction is not handled: %s.", env->insn);
+        care_err_set_external_msg(buf);
+        care_err_set_code(CARE_INV_INST);
+        return EXIT_FAILURE;
       }
 
       // update the value need to be updated to index register
@@ -475,20 +512,31 @@ int care_util_update(care_context_t *env, care_target_t *target,
       ud_reg = target->base;
       libc_reg = care_ud_translate(ud_reg);
       if (!care_ud_is_gpr(ud_reg)) {
-        errx(EXIT_FAILURE, "Non-GPR instruction involved (not handled): %s\n",
-             env->insn);
+        char buf[256];
+        sprintf(buf, "Non-GPR Instruction is not handled: %s.", env->insn);
+        care_err_set_external_msg(buf);
+        care_err_set_code(CARE_INV_INST);
+        return CARE_FAILURE;
       }
     } else {
-      errx(EXIT_FAILURE, "meet an an operand not supported: %s\n", env->insn);
+      char buf[256];
+      sprintf(buf, "Non REG involved in the MEM operand: %s\n", env->insn);
+      care_err_set_external_msg(buf);
+      care_err_set_code(CARE_INV_INST);
+      return CARE_FAILURE;
     }
   } else {
-    errx(EXIT_FAILURE, "operand type is neigther REG nor MEM: %s\n", env->insn);
+    char buf[256];
+    sprintf(buf, "operand type is neigther REG nor MEM: %s\n", env->insn);
+    care_err_set_code(CARE_INV_INST);
+    return CARE_FAILURE;
   }
 
   // update the register with the value
-  ptr = (uint8_t *)&(*env->gregs)[libc_reg];
+  ptr = (uint8_t *)&(*env->machine.gregs)[libc_reg];
   // adjust register alignment, e.g. AH, BH, CH, DH
   reg_width = care_ud_get_reg_width(ud_reg) / 8;
   if (care_ud_is_high(ud_reg)) ptr += reg_width;
   memcpy(ptr, &val, reg_width);
+  return CARE_SUCCESS;
 }
