@@ -23,14 +23,15 @@
 #include <unistd.h>
 
 #include "dw.h"
+#include "err.h"
 #include "types.h"
 #include "udis.h"
 #include "util.h"
 
 #if __x86_64__
-#define CARE_PC_REG REG_RIP
+#define CARE_REG_IP REG_RIP
 #elif __i386__
-#define CARE_PC_REG REG_EIP
+#define CARE_REG_IP REG_EIP
 #endif
 
 char *expr_path = NULL;
@@ -160,10 +161,11 @@ static ffi_type *care_util_get_ffi_type(enum TypeID pbTyID, int width) {
  * care_util_init: initalize the libcare by setting the context.
  * It will save the processor context, open the dwarf file and load
  * the recovery library
+ *
  * it returns EXIT_SUCCESS success
  */
-void care_util_init(care_context_t *context, siginfo_t *sig_info,
-                    void *sig_context) {
+int care_util_init(care_context_t *context, siginfo_t *sig_info,
+                   void *sig_context) {
   /**
    * the glibc variable containing the name of of the program. We used
    * it to derive recovery library file name and dwarf file name
@@ -176,41 +178,41 @@ void care_util_init(care_context_t *context, siginfo_t *sig_info,
   worker = getenv("CARE_WORKER_ID");
   injection = getenv("CARE_INJECTION_ID");
 
+  // expr environment setup error
+  if (!expr_path || !worker || !injection) return CARE_ENV_NULL;
+
+#if DEBUG_UTIL
   fprintf(stderr, "Expr Path: %s, Worker: %s, Injection: %s\n\n", expr_path,
           worker, injection);
+#endif
 
   // simple alias to processor contest for easy access
   ucontext_t *ucontext = (ucontext_t *)sig_context;
   mcontext_t *mcontext = &(ucontext->uc_mcontext);
-  context->fpregs = &(mcontext->fpregs);
-  context->gregs = &(mcontext->gregs);
-  context->stack = &(ucontext->uc_stack);
-  context->pc = (*context->gregs)[CARE_PC_REG];
+  context->machine.fpregs = &(mcontext->fpregs);
+  context->machine.gregs = &(mcontext->gregs);
+  context->machine.stack = &(ucontext->uc_stack);
+  context->pc = (mcontext->gregs)[CARE_REG_IP];
   // initialize dwarf library
   context->dwarf = care_dw_open(program_invocation_name);
-
-  fprintf(stderr, "CARE is to recover %s [pc: 0x%llx]\n", __progname,
-          context->pc);
-
   // loading recovery table
   sprintf(filename, "%s.tb", program_invocation_name);
+  context->rtable = care_tb_load_c(filename);
 
-  context->lib_table = care_tb_load_c(filename);
+  if (context->dwarf == NULL) return CARE_DWARF_NULL;
+  if (context->rtable == NULL) return CARE_TABLE_NULL;
+
+  fprintf(stderr, "CARE is to recover %s [pc: 0x%lx]\n", __progname,
+          context->pc);
 
 #ifdef DEBUG_RTB
   care_tb_print_c(context->lib_table);
 #endif
 
-  if (context->lib_table == NULL)
-    errx(EXIT_FAILURE, "Failed to open the table: %s (Error: %s)\n", filename,
-         strerror(errno));
-
   // loading recovery library
   sprintf(filename, "./lib%s.so", __progname);
-  context->lib_handle = dlopen(filename, RTLD_LAZY);
-  if (context->lib_handle == NULL)
-    errx(EXIT_FAILURE, "Failed to open library: %s (Error: %s)\n", filename,
-         dlerror());
+  context->rlib = dlopen(filename, RTLD_LAZY);
+  if (context->rlib == NULL) return CARE_RKLIB_NULL;
 }
 
 /**
@@ -218,7 +220,7 @@ void care_util_init(care_context_t *context, siginfo_t *sig_info,
  */
 void care_util_finish(care_context_t *context) {
   care_dw_close(context->dwarf);
-  dlclose(context->lib_handle);
+  dlclose(context->rlib);
 }
 
 /**
@@ -247,7 +249,7 @@ care_method_t care_util_diagnose(int signo, care_context_t *context,
   care_ud_disasm_instruction(&ud_obj, (const uint8_t *)(context->pc));
   context->insn = ud_insn_asm(&ud_obj);
 
-#if DEBUG
+#if DEBUG_UTIL
   fprintf(stderr, "Instruction: %s\n", context->insn);
 #endif
 
@@ -286,10 +288,12 @@ int care_util_find_routine(care_context_t *context, care_routine_t *routine) {
   // get debug line info and calc the hash value
   retval = care_dw_get_src_info(context->dwarf, PC, &src, &line, &column);
   (fname = strrchr(src, '/')) ? ++fname : (fname = src);
-#ifdef DEBUG
+
+#ifdef DEBUG_DWARF
   fprintf(stderr, "Build Key from:\n\tFile: %s\n\tLine: %d\n\tColumn: %d\n",
           fname, line, column);
 #endif
+
   sprintf(buf, "%s/%d/%d", fname, line, column);
   care_util_hash(buf, key);
 

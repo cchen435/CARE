@@ -4,21 +4,25 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libdwarf.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "err.h"
 #include "types.h"
 #include "util.h"
 
 // ---------------- declaration of helper functions ---------------- //
 
 care_dwarf_t care_dw_open(const char *file_name);
+bool care_dw_contains_pc(care_dwarf_t dwarf, Dwarf_Die die, Dwarf_Addr PC);
 Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC);
 Dwarf_Die care_dw_get_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC);
-Dwarf_Die care_dw_get_lexical_block(care_dwarf_t dwarf, Dwarf_Die subprogram,
-                                    Dwarf_Addr PC);
+Dwarf_Die care_dw_get_lexical_block_die(care_dwarf_t dwarf, Dwarf_Die root,
+                                        Dwarf_Addr PC);
+
 void care_dw_print_die(care_dwarf_t dwarf, Dwarf_Die die, int indent);
 
 /**
@@ -84,6 +88,87 @@ care_dwarf_t care_dw_open(const char *file_name) {
   return dwarf;
 }
 
+bool care_dw_contains_pc(care_dwarf_t dwarf, Dwarf_Die scope, Dwarf_Addr PC) {
+  Dwarf_Bool has_low_pc, has_high_pc, has_range;
+  Dwarf_Debug dbg = dwarf->dwarf_handle;
+  Dwarf_Error error;
+  Dwarf_Half tag;
+  int status;
+  bool retval = false;
+
+  has_low_pc = has_high_pc = has_range = 0;
+
+  status = dwarf_tag(scope, &tag, &error);
+
+  if (tag != DW_TAG_compile_unit && tag != DW_TAG_subprogram &&
+      tag != DW_TAG_lexical_block)
+    return 0;
+
+  status = dwarf_hasattr(scope, DW_AT_low_pc, &has_low_pc, &error);
+  if (status == DW_DLV_ERROR)
+    fprintf(stdout, "dwarf_hasattr error: %s\n", dwarf_errmsg(error));
+
+  status = dwarf_hasattr(scope, DW_AT_high_pc, &has_high_pc, &error);
+  if (status == DW_DLV_ERROR)
+    fprintf(stdout, "dwarf_hasattr error: %s\n", dwarf_errmsg(error));
+
+  status = dwarf_hasattr(scope, DW_AT_ranges, &has_range, &error);
+  if (status == DW_DLV_ERROR)
+    fprintf(stdout, "dwarf_hasattr error: %s\n", dwarf_errmsg(error));
+
+  if (has_low_pc && has_high_pc) {
+    Dwarf_Addr lowpc, highpc;
+    Dwarf_Half form;
+    enum Dwarf_Form_Class class;
+    dwarf_lowpc(scope, &lowpc, &error);
+    dwarf_highpc_b(scope, &highpc, &form, &class, &error);
+    if (class == DW_FORM_CLASS_CONSTANT) highpc += lowpc;
+    fprintf(stderr, "Debug: lowpc of CU: %lx, hihgpc of CU: %lx\n", lowpc,
+            highpc);
+    if (lowpc <= PC && highpc >= PC) retval = true;
+  } else if (has_range) {
+    Dwarf_Attribute attr;
+    dwarf_attr(scope, DW_AT_ranges, &attr, &error);
+
+#if DEBUG_DWARF
+    Dwarf_Half version, offset_size, form;
+    char *form_name;
+    dwarf_whatform(attr, &form, &error);
+    dwarf_get_version_of_die(CU, &version, &offset_size);
+    dwarf_get_FORM_name(form, &form_name);
+    printf("Form: %x (%s) \t Form Class: %d\n", form, form_name,
+           dwarf_get_form_class(version, attr, offset_size, form));
+#endif
+
+    Dwarf_Unsigned offset;
+    Dwarf_Ranges *ranges;
+    Dwarf_Signed count;
+    Dwarf_Unsigned bytes;
+    dwarf_global_formref(attr, &offset, &error);
+
+    retval =
+        dwarf_get_ranges_a(dbg, offset, scope, &ranges, &count, &bytes, &error);
+    if (retval == DW_DLV_NO_ENTRY) fprintf(stdout, "No ranges found\n");
+    if (retval == DW_DLV_ERROR)
+      fprintf(stdout, "dwarf_get_ranges_a failed: %s\n", dwarf_errmsg(error));
+
+    for (unsigned i = 0; i < count; i++) {
+      Dwarf_Ranges *cur = ranges + i;
+#if DEBUG_DWARF
+      printf("Ranges: type -- %d, addr1 -- %llx, addr -- %llx\n", cur->dwr_type,
+             cur->dwr_addr1, cur->dwr_addr2);
+#endif
+      if (cur->dwr_type == DW_RANGES_END) break;
+      if (cur->dwr_addr1 <= PC && cur->dwr_addr2 >= PC) {
+        retval = true;
+        break;
+      }
+    }
+    dwarf_ranges_dealloc(dbg, ranges, count);
+  }
+  return retval;
+}
+
 /**
  * care_dw_get_cu: care_dw_get_cu is to find and return the DIE
  *                 represneting a compilation unit that contains
@@ -95,6 +180,7 @@ care_dwarf_t care_dw_open(const char *file_name) {
 Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
   int retval = DW_DLV_ERROR;
   int trips = 0;
+  Dwarf_Debug dbg = dwarf->dwarf_handle;
   Dwarf_Bool is_info = 1;  // find CU in .debug_info
   Dwarf_Unsigned type_offset;
   Dwarf_Unsigned cu_header_length;
@@ -112,9 +198,9 @@ Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
 
   while (true) {  // iterate over Compile Units
     retval = dwarf_next_cu_header_c(
-        dwarf->dwarf_handle, is_info, &cu_header_length, &version,
-        &abbrev_offset, &address_size, &length_size, &extension_size,
-        &type_signature, &type_offset, &next_cu_header_offset, &error);
+        dbg, is_info, &cu_header_length, &version, &abbrev_offset,
+        &address_size, &length_size, &extension_size, &type_signature,
+        &type_offset, &next_cu_header_offset, &error);
 
     if (retval == DW_DLV_ERROR) {
       fprintf(stdout, "dwarf_next_cu_header_c failed: %s\n",
@@ -127,7 +213,7 @@ Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
 
     // get the first DIE in current Compilation Unit, which
     // is also the DIE representing the Compile Unit
-    retval = dwarf_siblingof(dwarf->dwarf_handle, NULL, &CU, &error);
+    retval = dwarf_siblingof(dbg, NULL, &CU, &error);
 
     // No DIE found in curr CU, check next
     if (retval == DW_DLV_NO_ENTRY) continue;
@@ -151,72 +237,7 @@ Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
     dwarf_diename(CU, &CU_name, &error);
     fprintf(stdout, "CU Name: %s\n", CU_name);
 #endif
-
-    Dwarf_Bool has_low_pc, has_high_pc, has_range;
-    retval = dwarf_hasattr(CU, DW_AT_low_pc, &has_low_pc, &error);
-    if (retval == DW_DLV_ERROR)
-      fprintf(stdout, "dwarf_hasattr error: %s\n", dwarf_errmsg(error));
-
-    retval = dwarf_hasattr(CU, DW_AT_high_pc, &has_high_pc, &error);
-    if (retval == DW_DLV_ERROR)
-      fprintf(stdout, "dwarf_hasattr error: %s\n", dwarf_errmsg(error));
-
-    retval = dwarf_hasattr(CU, DW_AT_ranges, &has_range, &error);
-    if (retval == DW_DLV_ERROR)
-      fprintf(stdout, "dwarf_hasattr error: %s\n", dwarf_errmsg(error));
-
-    if (has_low_pc && has_high_pc) {
-      Dwarf_Addr lowpc, highpc;
-      Dwarf_Half form;
-      enum Dwarf_Form_Class class;
-      dwarf_lowpc(CU, &lowpc, &error);
-      dwarf_highpc_b(CU, &highpc, &form, &class, &error);
-      if (class == DW_FORM_CLASS_CONSTANT) highpc += lowpc;
-      fprintf(stderr, "Debug: lowpc of CU: %llx, hihgpc of CU: %llx\n", lowpc,
-              highpc);
-      if (lowpc <= PC && highpc >= PC) return CU;
-    } else if (has_range) {
-      Dwarf_Attribute attr;
-      dwarf_attr(CU, DW_AT_ranges, &attr, &error);
-
-#if DEBUG_DWARF
-      Dwarf_Half version, offset_size, form;
-      char *form_name;
-      dwarf_whatform(attr, &form, &error);
-      dwarf_get_version_of_die(CU, &version, &offset_size);
-      dwarf_get_FORM_name(form, &form_name);
-      printf("Form: %x (%s) \t Form Class: %d\n", form, form_name,
-             dwarf_get_form_class(version, attr, offset_size, form));
-#endif
-
-      Dwarf_Unsigned offset;
-      Dwarf_Ranges *ranges;
-      Dwarf_Signed count;
-      Dwarf_Unsigned bytes;
-      dwarf_global_formref(attr, &offset, &error);
-
-      retval = dwarf_get_ranges_a(dwarf->dwarf_handle, offset, CU, &ranges,
-                                  &count, &bytes, &error);
-      if (retval == DW_DLV_NO_ENTRY) {
-        fprintf(stdout, "No ranges found\n");
-        continue;
-      }
-      if (retval == DW_DLV_ERROR) {
-        fprintf(stdout, "dwarf_get_ranges_a failed: %s\n", dwarf_errmsg(error));
-        continue;
-      }
-
-      for (unsigned i = 0; i < count; i++) {
-        Dwarf_Ranges *cur = ranges + i;
-#if DEBUG_DWARF
-        printf("Ranges: type -- %d, addr1 -- %llx, addr -- %llx\n",
-               cur->dwr_type, cur->dwr_addr1, cur->dwr_addr2);
-#endif
-        if (cur->dwr_type == DW_RANGES_END) break;
-        if (cur->dwr_addr1 <= PC && cur->dwr_addr2 >= PC) return CU;
-      }
-      dwarf_ranges_dealloc(dwarf->dwarf_handle, ranges, count);
-    }
+    if (care_dw_contains_pc(dwarf, CU, PC)) return CU;
   }
   return NULL;
 }
@@ -227,26 +248,20 @@ Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
  *                             by PC, and the DIE for the CU of subprogram
  *
  */
-int care_dw_get_cu_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC,
-                                  Dwarf_Die *CU, Dwarf_Die *subprogram) {
+Dwarf_Die care_dw_get_cu_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
   Dwarf_Global *globals;
   Dwarf_Error error;
   Dwarf_Signed gcnt = -1;
-  Dwarf_Die tmp = NULL;
+  Dwarf_Die tmp = NULL, subprogram = NULL;
 
   Dwarf_Half tag, form;
   // the offsets for DIEs of the global object
   // and the CU that contains the object
   Dwarf_Off die_offset, cu_offset;
   Dwarf_Off cu_offset;
-  Dwarf_Addr lowpc, highpc;
-  enum Dwarf_Form_Class class;
   Dwarf_Debug Dbg = dwarf->dwarf_handle;
   char *name, *tag_name;
   int i, retval;
-
-  *CU = NULL;
-  *subprogram = NULL;
 
   // this dwarf interface is to get static functions, it looks at
   // .debug_funcnames section.
@@ -254,13 +269,13 @@ int care_dw_get_cu_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC,
 
   if (retval == DW_DLV_NO_ENTRY) {  // .debug_funcnames has no entries
     fprintf(stdout, "No subprogram found for instruction at %llx\n", PC);
-    return EXIT_FAILURE;
+    return NULL;
   }
 
   if (retval == DW_DLV_NOCOUNT) {
     fprintf(stdout, "Error to get the function for %llu (%s)\n", PC,
             dwarf_errmsg(error));
-    return EXIT_FAILURE;
+    return NULL;
   }
 
   for (i = 0; i < gcnt; i++) {
@@ -278,20 +293,49 @@ int care_dw_get_cu_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC,
 
     retval = dwarf_offdie(Dbg, die_offset, &tmp, &error);
     dwarf_tag(tmp, &tag, &error);
-    dwarf_lowpc(tmp, &lowpc, &error);
-    dwarf_highpc_b(tmp, &highpc, &form, &class, &error);
-    if (class == DW_FORM_CLASS_CONSTANT) highpc = highpc + lowpc;
 
-    if (tag == DW_TAG_subprogram && lowpc <= PC && highpc >= PC) {
-      *subprogram = tmp;
-      dwarf_offdie(Dbg, cu_offset, CU, &error);
-      return EXIT_SUCCESS;
-    }
+    if (tag == DW_TAG_subprogram && care_dw_contains_pc(dwarf, tmp, PC))
+      subprogram = tmp;
+
     dwarf_dealloc(Dbg, name, DW_DLA_STRING);
     dwarf_dealloc(Dbg, globals[i], DW_DLA_FUNC);
   }
   dwarf_dealloc(Dbg, globals, DW_DLA_LIST);
-  return EXIT_FAILURE;
+  return subprogram;
+}
+
+/** care_dw_get_lexical_block_die is to return the DIE that representing a
+ * lexical block containing the  instruction in PC, the block should be
+ * the child of root, which should be either a subprogram die or lexical
+ * block die
+ */
+Dwarf_Die care_dw_get_lexical_block_die(care_dwarf_t dwarf, Dwarf_Die root,
+                                        Dwarf_Addr PC) {
+  Dwarf_Debug dbg = dwarf->dwarf_handle;
+  Dwarf_Die curr, sibling;
+  Dwarf_Half tag;
+  Dwarf_Error error;
+  int retval;
+  dwarf_tag(root, &tag, &error);
+  if (tag != DW_TAG_subprogram && tag != DW_TAG_lexical_block) {
+    printf("Expcting a DIE either for a subprogram DIE or for lexical block\n");
+    return NULL;
+  }
+
+  retval = dwarf_child(root, &curr, &error);
+  if (retval != DW_DLV_OK) return NULL;
+  dwarf_tag(curr, &tag, &error);
+  if (tag == DW_TAG_lexical_block && care_dw_contains_pc(dwarf, curr, PC))
+    return curr;
+
+  while (retval =
+             dwarf_siblingof(dbg, curr, &sibling, &error) != DW_DLV_NO_ENTRY) {
+    dwarf_tag(sibling, &tag, &error);
+    if (tag != DW_TAG_lexical_block) continue;
+    if (care_dw_contains_pc(dwarf, sibling, PC)) return sibling;
+    curr = sibling;
+  }
+  return NULL;
 }
 
 /**
@@ -348,7 +392,7 @@ int care_dw_get_locdesc(care_context_t *env, Dwarf_Die die,
     // interpret the lopc and hipc based on lle value
     switch (lle) {
       case DW_LLE_offset_pair: {
-        Dwarf_Die func = care_dw_get_func(env->dwarf, env->pc);
+        Dwarf_Die func = care_dw_get_subprogram_die(env->dwarf, env->pc);
         Dwarf_Addr base;
         retval = dwarf_lowpc(func, &base, &error);
         if (retval != DW_DLV_OK) {
@@ -542,7 +586,7 @@ static void *care_dw_eval_op_value(care_context_t *env, Dwarf_Locdesc_c desc) {
     // FIXME: we assume on X86_64, the frame base is always stored at
     // %RBP (or DW_OP_reg6). fix it in the furture to derive the frame
     // base by retrieving and analyze the DIE of the current function
-    return (void *)((*env->gregs)[REG_RBP] + (Dwarf_Signed)op1);
+    return (void *)((*env->machine.gregs)[REG_RBP] + (Dwarf_Signed)op1);
   } else {
     dwarf_get_OP_name(opcode, &opcode_str);
     errx(EXIT_FAILURE, "Unhandled opcode: %s\n", opcode_str);
@@ -593,44 +637,46 @@ static Dwarf_Die care_dw_get_global_var_die(care_dwarf_t dwarf, char *name) {
 /*
  * care_dw_search_var: seach the variable on the tree given by root.
  */
-static Dwarf_Die care_dw_search_var(care_dwarf_t dwarf, Dwarf_Die root,
+static Dwarf_Die care_dw_search_var(care_dwarf_t dwarf, Dwarf_Die scope,
                                     char *varname) {
-  Dwarf_Debug dwarf_handle = dwarf->dwarf_handle;
+  Dwarf_Debug dbg = dwarf->dwarf_handle;
   int retval, matched;
   char *name;
-  Dwarf_Die child, curr, sibling;
+  Dwarf_Die curr, sibling;
   Dwarf_Error error;
   Dwarf_Half die_tag;
 
   Dwarf_Die tmp = NULL;
 
-  dwarf_tag(root, &die_tag, &error);
-  dwarf_diename(root, &name, &error);
-  matched = !strcmp(name, varname);
-  dwarf_dealloc(dwarf_handle, name, DW_DLA_STRING);
-
-  if ((die_tag == DW_TAG_variable || die_tag == DW_TAG_formal_parameter) &&
-      matched) {
-    return root;
-  }
-
-  // search the child if it has, otherwise return NULL
-  if ((retval = dwarf_child(root, &child, &error)) == DW_DLV_OK)
-    tmp = care_dw_search_var(dwarf, child, varname);
-  else
+  dwarf_tag(scope, &die_tag, &error);
+  if (die_tag != DW_TAG_subprogram && die_tag != DW_TAG_lexical_block)
     return NULL;
 
-  curr = child;
+  // search the child if it has, otherwise return NULL
+  if ((retval = dwarf_child(scope, &curr, &error)) != DW_DLV_OK) return NULL;
+
+  dwarf_tag(curr, &die_tag, &error);
+  dwarf_diename(curr, &name, &error);
+  matched = !strcmp(name, varname);
+  dwarf_dealloc(dbg, name, DW_DLA_STRING);
+  if ((die_tag == DW_TAG_variable || die_tag == DW_TAG_formal_parameter) &&
+      matched)
+    return curr;
 
   // iterate over other children through the sibling interface
-  while (!tmp && (retval = dwarf_siblingof(dwarf_handle, curr, &sibling,
-                                           &error) != DW_DLV_NO_ENTRY)) {
-    // add code for process the sibling here
-    tmp = care_dw_search_var(dwarf, sibling, varname);
-    dwarf_dealloc(dwarf->dwarf_handle, curr, DW_DLA_DIE);
+  while ((retval = dwarf_siblingof(dbg, curr, &sibling, &error) !=
+                   DW_DLV_NO_ENTRY)) {
+    dwarf_tag(sibling, &die_tag, &error);
+    if (die_tag != DW_TAG_variable && die_tag != DW_TAG_formal_parameter)
+      continue;
+    dwarf_diename(sibling, &name, &error);
+    matched = !strcmp(name, varname);
+    dwarf_dealloc(dbg, name, DW_DLA_STRING);
+    if (matched) tmp = sibling;
+    dwarf_dealloc(dbg, curr, DW_DLA_DIE);
     curr = sibling;
   }
-  if (tmp != curr) dwarf_dealloc(dwarf_handle, curr, DW_DLA_DIE);
+  if (tmp != curr) dwarf_dealloc(dbg, curr, DW_DLA_DIE);
   return tmp;
 }
 
@@ -641,10 +687,38 @@ static Dwarf_Die care_dw_search_var(care_dwarf_t dwarf, Dwarf_Die root,
  */
 static Dwarf_Die care_dw_get_local_var_die(care_dwarf_t dwarf, Dwarf_Addr PC,
                                            char *varname) {
-  Dwarf_Die func, result;
-  int retval;
-  func = care_dw_get_func(dwarf, PC);
-  return care_dw_search_var(dwarf, func, varname);
+  struct scope {
+    Dwarf_Die die;
+    struct scope *next;
+  } *scopes = NULL;
+
+  // construct the scopes for the instruction
+  Dwarf_Die curr, subprogram, retval;
+  subprogram = care_dw_get_subprogram_die(dwarf, PC);
+
+  scopes = (struct scope *)malloc(sizeof(struct scope));
+  scopes->die = subprogram;
+  scopes->next = NULL;
+
+  curr = subprogram;
+
+  while (true) {
+    curr = care_dw_get_lexical_block_die(dwarf, curr, PC);
+    if (!curr) break;
+    struct scope *tmp = (struct scope *)malloc(sizeof(struct scope));
+    tmp->die = curr;
+    tmp->next = scopes;
+    scopes = tmp;
+  }
+
+  struct scope *tmp = scopes;
+  while (tmp) {
+    retval = care_dw_search_var(dwarf, tmp, varname);
+    if (retval) break;
+    tmp = tmp->next;
+  }
+  if (!tmp) return NULL;
+  return retval;
 }
 
 /**
@@ -871,38 +945,36 @@ int care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC, char **ret_file,
 
   int i, retval = 0;
 
-  care_dw_get_cu(dwarf, PC);
+  cu_die = care_dw_get_cu_die(dwarf, PC);
+  if (!cu_die) return CARE_DBG_NULL;
 
-  while ((retval = care_dw_get_next_cu_die(dwarf, &cu_die)) == DW_DLV_OK) {
-    retval = 0;
-    dwarf_srclines(cu_die, &linebuf, &linecount, &error);
+  dwarf_srclines(cu_die, &linebuf, &linecount, &error);
 
 #ifdef DEBUG_DW_LINE
-    care_dw_print_line_table(dwarf, cu_die);
+  care_dw_print_line_table(dwarf, cu_die);
 #endif
 
-    for (i = 0; i < linecount - 1; i++) {
-      dwarf_lineaddr(linebuf[i], &lineaddr, &error);
+  for (i = 0; i < linecount - 1; i++) {
+    dwarf_lineaddr(linebuf[i], &lineaddr, &error);
 
-      if (!retval && lineaddr == PC) {
-        if (ret_file) dwarf_linesrc(linebuf[i], ret_file, &error);
-        if (ret_line) dwarf_lineno(linebuf[i], ret_line, &error);
-        if (ret_column) dwarf_lineoff_b(linebuf[i], ret_column, &error);
-        retval = 1;
-      } else if (!retval && lineaddr > PC) {
-        if (ret_file) dwarf_linesrc(linebuf[i - 1], ret_file, &error);
-        if (ret_line) dwarf_lineno(linebuf[i - 1], ret_line, &error);
-        if (ret_column) dwarf_lineoff_b(linebuf[i - 1], ret_column, &error);
-        retval = 1;
-      }
-      dwarf_dealloc(dwarf_handle, linebuf[i], DW_DLA_LINE);
-      if (retval) break;
+    if (lineaddr == PC) {
+      if (ret_file) dwarf_linesrc(linebuf[i], ret_file, &error);
+      if (ret_line) dwarf_lineno(linebuf[i], ret_line, &error);
+      if (ret_column) dwarf_lineoff_b(linebuf[i], ret_column, &error);
+      retval = 1;
+    } else if (lineaddr > PC) {
+      if (ret_file) dwarf_linesrc(linebuf[i - 1], ret_file, &error);
+      if (ret_line) dwarf_lineno(linebuf[i - 1], ret_line, &error);
+      if (ret_column) dwarf_lineoff_b(linebuf[i - 1], ret_column, &error);
+      retval = 1;
     }
-    dwarf_dealloc(dwarf_handle, linebuf, DW_DLA_LIST);
-    dwarf_dealloc(dwarf_handle, cu_die, DW_DLA_DIE);
+    dwarf_dealloc(dwarf_handle, linebuf[i], DW_DLA_LINE);
     if (retval) break;
   }
-  return retval;
+  dwarf_dealloc(dwarf_handle, linebuf, DW_DLA_LIST);
+  dwarf_dealloc(dwarf_handle, cu_die, DW_DLA_DIE);
+  if (retval) return CARE_SUCCESS;
+  return CARE_DBG_NULL;
 }
 
 /**

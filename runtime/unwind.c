@@ -4,7 +4,7 @@
 
 #include "err.h"
 
-#include "unwind.map"
+#include "unwind.def"
 
 care_status_t care_unwind_get_signal_frame(unw_cursor_t *cursor) {
   unw_context_t ctxt;
@@ -19,4 +19,3 @@ care_status_t care_unwind_get_IP(unw_cursor_t *cursor, unw_word_t IP) {
   if (0 == unw_get_reg(cursor, UNW_REG_IP, &IP)) return CARE_SUCCESS;
   return CARE_FAILURE;
 }
-

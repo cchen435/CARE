@@ -29,6 +29,12 @@
  */
 typedef enum _method { INVALID = 0, REDO = 1, UNWIND = 2 } care_method_t;
 
+struct __care_scope {
+  Dwarf_Die scope;
+  struct __care_scope *next;
+};
+typedef struct __care_scope care_scope_t;
+
 /**
  * a wrapper to dwarf handler
  */
@@ -38,26 +44,30 @@ struct __care_dwarf {
 };
 typedef struct __care_dwarf *care_dwarf_t;
 
+struct __care_machine {
+  fpregset_t *fpregs;  // float point registers
+  gregset_t *gregs;    // general purpose registers
+  stack_t *stack;      // the stack
+};
+typedef struct __care_machine care_machine_t;
+
 /**
  * the context used by library
  */
 struct __care_context {
   /* process context saved by OS when generating a signal */
-  fpregset_t *fpregs;  // float point registers
-  gregset_t *gregs;    // general purpose registers
-  stack_t *stack;      // the stack
-  greg_t pc;           // the program counter
+  care_machine_t machine;
 
   /* file descriptors */
-  care_dwarf_t dwarf;  // the file descriptor for dwarf
-
-  care_table_t lib_table;  // recovery function table
-  void *lib_handle;        // the lib handler returned by dlopen
+  care_dwarf_t dwarf;   // the file descriptor for dwarf
+  care_table_t rtable;  // recovery function table
+  void *rlib;           // the handler for recovery library, returned by dlopen
 
   /* udis86 disassember objects */
-  // ud_t ud_obj;
-  // ud_operand_t *opr;  // the interesting operand
   const char *insn;
+
+  uint64_t pc;  // the program counter
+  care_scope_t *scopes;
 };
 typedef struct __care_context care_context_t;
 
