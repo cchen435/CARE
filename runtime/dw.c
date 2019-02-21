@@ -1127,6 +1127,6 @@ void *care_dw_get_var_loc(care_context_t *env, char *varname) {
   care_dw_print_die(env->dwarf, var_die, 0);
 #endif
   retval = care_dw_get_locdesc(env, var_die, &locdesc_entry);
-  if (retval = CARE_SUCCESS) return care_dw_eval_locdesc(env, locdesc_entry);
+  if (retval == CARE_SUCCESS) return care_dw_eval_locdesc(env, locdesc_entry);
   return NULL;
 }

@@ -230,7 +230,7 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
 void care_util_finish(care_context_t *context) {
   char record[1024];
   sprintf(
-      record, "ID:%s, PC:0x%016llx, Insn:%s, Key:%s, Status:%s, Message:%s\n",
+      record, "ID:%s; PC:0x%016lx; Insn: %s; Key: %s; Status: %s; Msg: %s\n",
       context->log.inject, context->pc, context->insn, context->log.key,
       context->log.status == CARE_SUCCESS ? "Success" : "Failure",
       context->log.status == CARE_SUCCESS ? "Success" : care_err_get_errmsg());
@@ -270,7 +270,7 @@ care_status_t care_util_diagnose(int signo, care_context_t *context,
   // disassemble the instruction
   care_ud_setup(&ud_obj);
   care_ud_disasm_instruction(&ud_obj, (const uint8_t *)(context->pc));
-  context->insn = ud_insn_asm(&ud_obj);
+  context->insn = strdup(ud_insn_asm(&ud_obj));
 
 #if DEBUG_UTIL
   fprintf(stderr, "Instruction: %s\n", context->insn);
@@ -414,6 +414,10 @@ care_status_t care_util_exec_routine(care_context_t *env,
   // value is stored.
   for (i = 0; i < routine.n_params; i++) {
     args[i] = care_dw_get_var_loc(env, routine.params[i]);
+    if (args[i] == NULL) {
+      care_err_set_code(CARE_NO_LOC);
+      return CARE_FAILURE;
+    }
   }
 
   // get function pointer

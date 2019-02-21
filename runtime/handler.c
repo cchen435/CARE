@@ -32,6 +32,7 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
 
   if (method == M_INVALID) {
     ctx.log.status = CARE_FAILURE;
+    goto fexit;
   } else if (method == M_UNWIND) {  // recover with unwind
     care_util_unwind(1);
   } else if (method == M_REDO) {  // recover with recomputation
@@ -55,6 +56,7 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
       ctx.log.status = CARE_FAILURE;
       goto fexit;
     }
+    ctx.log.status = CARE_SUCCESS;
   }
   care_util_finish(&ctx);
   return;

@@ -1,6 +1,7 @@
 add_library(CARERuntime SHARED
     care.c
     dw.c
+    errx.c
     handler.c
     udis.c
     util.c

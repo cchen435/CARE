@@ -21,5 +21,6 @@ typedef enum _error {
 
 extern void care_err_set_code(care_error_t err);
 extern void care_err_set_external_msg(char *msg);
+extern char *care_err_get_errmsg();
 
 #endif
