@@ -38,15 +38,23 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
     // retrive recovery routine
     status = care_util_find_routine(&ctx, &routine);
     if (status != CARE_SUCCESS) {
-      errx(EXIT_FAILURE, "No recovery routine is found\n");
+      ctx.log.status = CARE_FAILURE;
+      goto fexit;
     }
 
     // execute the recovery routine
     status = care_util_exec_routine(&ctx, routine, &rvalue);
+    if (status != CARE_SUCCESS) {
+      ctx.log.status = CARE_FAILURE;
+      goto fexit;
+    }
 
     // update the target
     status = care_util_update(&ctx, &target, rvalue);
-    if (status != CARE_SUCCESS) goto fexit;
+    if (status != CARE_SUCCESS) {
+      ctx.log.status = CARE_FAILURE;
+      goto fexit;
+    }
   }
   care_util_finish(&ctx);
   return;

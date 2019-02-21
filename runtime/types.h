@@ -36,12 +36,6 @@ typedef struct _log care_log_t;
  */
 typedef enum _method { M_INVALID = 0, M_REDO = 1, M_UNWIND = 2 } care_method_t;
 
-struct __care_scope {
-  Dwarf_Die scope;
-  struct __care_scope *next;
-};
-typedef struct __care_scope care_scope_t;
-
 /**
  * a wrapper to dwarf handler
  */
