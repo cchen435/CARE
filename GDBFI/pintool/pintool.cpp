@@ -37,44 +37,66 @@ END_LEGAL */
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+
 #include "pin.H"
 
-static uint64_t icount = 0;  // instruction counter
+static int bbls = 0;
+/**
+ * it is too large to log a map of instruction id to its address
+ * so we are to record the number of executions for each instruction
+ */
+typedef struct _ins {
+  ADDRINT addr;
+  UINT8 size;
+  std::string str;
+  INT8 MemWrite;
+  INT8 MemRead;
+} care_ins_t;
 
-// a buffer for storing pairs of <icount, IP>
-static std::map<uint64_t, void *> buf;
+typedef struct _bbl {
+  care_ins_t *instructions;
+  std::string rtn;
+  UINT64 counter;
+  UINT8 num;
+  struct _bbl *next;
+} care_bbl_t;
+care_bbl_t *bbl_list = nullptr;
+
+std::vector<std::string> skipped_img, skipped_rtn;
 
 KNOB<std::string> KnovOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o",
                                  "gdbfi.profile",
                                  "specify file name for profiling data");
-
-VOID dolog(VOID *IP) {
-  icount++;
-  buf[icount] = IP;
-}
-
-bool isMainImage(IMG img) {
+/**
+ * We are interested in main image of a program, not images of libraries.
+ * we avoid static linking at compile stage.
+ *
+ * IMG_TYPE_STATIC: main image linked with -static
+ * IMG_TYPE_SHARED: main image linked with shared libraries
+ * FIXME: currently the way to check whether the image is a
+ *        shared library or not is still unstable.
+ *        IMG_TYPE_SHAREDLIB represents for shared libraries,
+ *        but also for program linked with -pie flag
+ */
+static bool isMainImage(IMG img) {
   IMG_TYPE ty = IMG_Type(img);
-#ifdef DEBUG_IMG
-  std::cout << "Loading Image: " << IMG_Name(img) << " (Type: " << ty << ")\n";
-#endif
-  /**
-   * IMG_TYPE_STATIC: main image linked with -static
-   * IMG_TYPE_SHARED: main image linked with shared libraries
-   */
   return ty == IMG_TYPE_STATIC || ty == IMG_TYPE_SHARED;
 }
 
-bool endsWith(const std::string &s, const std::string &suffix) {
+static bool endsWith(const std::string &s, const std::string &suffix) {
   return s.rfind(suffix) == (s.size() - suffix.size());
 }
 
-bool startsWith(const std::string &s, const std::string &prefix) {
+static bool startsWith(const std::string &s, const std::string &prefix) {
   return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
 }
 
-// we would like to skip routines in plt and libc (start routine)
-bool isValidRTN(RTN rtn) {
+/**
+ * we are not instereted in function from glibc and plt which is for link
+ * purpose
+ */
+static bool isTargetRTN(RTN rtn) {
+  if (!RTN_Valid(rtn)) return false;
   std::string name = RTN_Name(rtn);
   if (endsWith(name, "@plt") || endsWith(name, ".plt")) return false;
   if (endsWith(name, ".plt")) return false;
@@ -85,46 +107,90 @@ bool isValidRTN(RTN rtn) {
   return true;
 }
 
+VOID bbl_profile(UINT64 *counter) { (*counter)++; }
+
 VOID ImageLoad(IMG img, VOID *V) {
-  if (isMainImage(img)) {
-#ifdef DEBUG_IMG
-    std::cout << "Instrument the image: " << IMG_Name(img) << "\n";
-#endif
-    for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec)) {
-      for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)) {
-#ifdef DEBUG_RTN
-        std::cout << "Function: " << RTN_Name(rtn) << "\n";
-#endif
-        if (!isValidRTN(rtn)) continue;
-        RTN_Open(rtn);
-        for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins)) {
-          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)dolog, IARG_INST_PTR,
-                         IARG_END);
-        }
-        RTN_Close(rtn);
+  if (!isMainImage(img)) {
+    skipped_img.push_back(IMG_Name(img));
+    return;
+  }
+  std::cerr << "Instrument the image: " << IMG_Name(img) << "\n";
+  for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec)) {
+    for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)) {
+      if (!isTargetRTN(rtn)) {
+        skipped_rtn.push_back(RTN_Name(rtn));
+        continue;
       }
+#if 0
+      RTN_Open(rtn);
+
+      for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins)) {
+        // create an entry in counter map for each static instruction
+        ADDRINT IP = INS_Address(ins);
+      }
+      RTN_Close(rtn);
+#endif
     }
   }
-#ifdef DEBUG
-  else {
-    std::cout << "skip the image: " << IMG_Name(img) << "\n";
+}
+
+VOID Trace(TRACE trace, VOID *V) {
+  RTN rtn = TRACE_Rtn(trace);
+  if (!isTargetRTN(rtn)) return;
+
+  SEC sec = RTN_Sec(rtn);
+  IMG img = SEC_Img(sec);
+  if (!isMainImage(img)) return;
+
+  // add instrumenttion calls for each basic block
+  for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl)) {
+    bbls++;
+    int num_insts = BBL_NumIns(bbl);
+    care_bbl_t *buf = new care_bbl_t;
+    buf->instructions = new care_ins_t[num_insts];
+    buf->rtn = RTN_Name(rtn);
+    buf->num = 0;
+    buf->counter = 0;
+
+    for (INS ins = BBL_InsHead(bbl); INS_Valid(ins) && buf->num < num_insts;
+         ins = INS_Next(ins)) {
+      buf->instructions[buf->num].addr = INS_Address(ins);
+      buf->instructions[buf->num].str = INS_Disassemble(ins);
+      buf->instructions[buf->num].size = INS_Size(ins);
+      buf->instructions[buf->num].MemRead = INS_IsMemoryRead(ins);
+      buf->instructions[buf->num].MemWrite = INS_IsMemoryWrite(ins);
+      buf->num++;
+    }
+
+    buf->next = bbl_list;
+    bbl_list = buf;
+    BBL_InsertCall(bbl, IPOINT_BEFORE, (AFUNPTR)bbl_profile, IARG_PTR,
+                   &buf->counter, IARG_END);
   }
-#endif
 }
 
 // This function is called when the application exits
 // It prints the name and count for each procedure
 VOID Fini(INT32 code, VOID *v) {
-  ofstream OutFile;
-  std::cout << "End of Pintool\n\n";
-  OutFile.open(KnovOutputFile.Value().c_str());
-  OutFile << setw(20) << "ID"
-          << "\t" << setw(20) << "IP"
-          << "\n";
-  for (auto it = buf.begin(); it != buf.end(); it++) {
-    OutFile << setw(20) << it->first << "\t" << setw(20) << it->second << "\n";
+  std::cout << "End of Pintool. BBLs: " << bbls << "\n";
+  FILE *fp = fopen(KnovOutputFile.Value().c_str(), "w");
+
+  fprintf(fp, "%14s%50s%10s%10s%10s%30s%30s\n", "addr", "assembly", "size",
+          "MemRead", "MemWrite", "function", "executions");
+  for (care_bbl_t *h = bbl_list; h; h = h->next) {
+    for (unsigned i = 0; i < h->num; i++) {
+      care_ins_t inst = h->instructions[i];
+      const char *rtn = h->rtn.c_str();
+      const char *str = inst.str.c_str();
+      UINT8 size = inst.size;
+      UINT8 read = inst.MemRead;
+      UINT8 write = inst.MemWrite;
+      ADDRINT addr = inst.addr;
+      fprintf(fp, "%14lx%50s%10u%10d%10d%30s%30lu\n", addr, str, size, read,
+              write, rtn, h->counter);
+    }
   }
-  OutFile.close();
+  fclose(fp);
 }
 
 /* ===================================================================== */
@@ -148,8 +214,13 @@ int main(int argc, char *argv[]) {
   // Initialize pin
   if (PIN_Init(argc, argv)) return Usage();
 
+#if 0
   // Register ImageLoad to be called to instrument img
   IMG_AddInstrumentFunction(ImageLoad, 0);
+#endif
+
+  std::cerr << "Instrument at Trace/BBL level.\n";
+  TRACE_AddInstrumentFunction(Trace, 0);
 
   // Register Fini to be called when the application exits
   PIN_AddFiniFunction(Fini, 0);
