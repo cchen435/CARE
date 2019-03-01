@@ -29,6 +29,7 @@ struct CarePass : public ModulePass {
   Module *CareM;  // the module for recovery routines
 
  private:
+  Function *curr;
   /**
    * Data structures and methods for adding fake debug information
    *
@@ -82,7 +83,11 @@ struct CarePass : public ModulePass {
 
   std::string getFunctionName() {
     static int i = 0;
-    return "care_recover_k" + std::to_string(++i);
+    if (curr)
+      return "care_recover_" + curr->getName().str() + "_k" +
+             std::to_string(++i);
+    else
+      return "care_recover_k" + std::to_string(++i);
   };
 
   std::string getOrCreateValueName(Value *V);

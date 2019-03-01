@@ -5,9 +5,9 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileSystem.h>
 
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 #include <set>
 
 #include "CarePass.h"
@@ -202,6 +202,8 @@ bool CarePass::runOnModule(Module &M) {
     std::set<Value *> Variables;
     if (!hasDebugInfo) DIFunc = DbgInfoBuilder->createDIFunction(F);
 
+    curr = &F;
+
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
       if (!isMemAccInst(&*I)) continue;
 
@@ -263,7 +265,10 @@ bool CarePass::runOnModule(Module &M) {
       rktable += loc->getScope()->getFilename().str() +
                  "\tLine: " + std::to_string(loc->getLine()) +
                  "\tCol: " + std::to_string(loc->getColumn()) + "\t" +
-                 kernel->getName().str() + "\n";
+                 kernel->getName().str() + "(";
+      for (auto i = 0; i < pnames.size() - 1; i++)
+        rktable += (pnames[i] + ", ");
+      rktable += (pnames[pnames.size() - 1] + ")\n");
 
       // promote the debug data to all of its binary users
       // since in x86 architecture, the binary operation could
@@ -521,7 +526,7 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
     case Instruction::GetElementPtr:
       Inst = IRB.CreateGEP(
           Operands[0],
-          std::vector<Value *>(Operands.begin() + 1, Operands.end()), 
+          std::vector<Value *>(Operands.begin() + 1, Operands.end()),
           Insn->getName());
       break;
     case Instruction::Load:
