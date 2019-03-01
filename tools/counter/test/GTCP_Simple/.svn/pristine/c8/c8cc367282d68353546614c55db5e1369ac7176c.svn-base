@@ -1,0 +1,20 @@
+# intial run or restart run
+irun 0
+# number of time steps
+mstep 100
+# radial
+mpsi 720
+# poloidal
+mthetamax 5120
+# toroidal
+mzetamax 1
+# number of pe in each radial
+npe_radiald 1
+# major radius
+r0 745.6
+# nbound value
+nbound 4
+# collision parameters tauii > 0 collision < 0 no collision
+tauii -1.0
+# the rest of the parameters
+# can be modified in setup.c

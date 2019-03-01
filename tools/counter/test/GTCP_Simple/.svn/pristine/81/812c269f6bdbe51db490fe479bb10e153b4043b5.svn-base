@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -A CSC094
+#PBS -N miniapp
+#PBS -j oe
+#PBS -V
+#PBS -l walltime=00:04:00
+#PBS -l nodes=5
+
+# export CMTransportVerbose=1
+#export CMTraceFile=1
+export CMSelfFormats=1
+#export CMTransport="enet"
+cd $GTCPRUN
+
+aprun -n 256 $LMP/lmp_titan < in.cracksm &> lmp.out &
+aprun -n 60 $GEN/install/bin/select dump.custom.fp atoms 1 lmpselect.fp velos vx vy vz &> sel.out &
+aprun -n 22 $GEN/install/bin/magnitude lmpselect.fp velos mags.fp mags &> mag.out &
+aprun -n 8 $GEN/install/bin/histogram mags.fp 128 mags &> histo.out &
+
+wait

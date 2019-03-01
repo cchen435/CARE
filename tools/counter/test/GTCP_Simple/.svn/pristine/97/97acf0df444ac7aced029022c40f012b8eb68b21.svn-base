@@ -1,0 +1,413 @@
+Finished reading input file.
+Using npartdom 2, ntoroidal 8, nthreads 1
+number of radial parition=2 number of particle copies=1
+NOT use customized MPI mapping on BGQ
+Using n_rad_buf=7 buffer cells: gyroradius/deltar=0.900307
+mi: 161795, mi_total: 2588720, mgrid: 32449, mzetamax: 8
+Binning and removing holes every 1 steps
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+name of ADIOS file, iste=0
+istep=0 timing_e_inter=1.600311e-01 timing_inter_max=1.639130e-01 timing_inter_min=1.600311e-01 timing=1.862459e-01, timing_max=1.862459e-01 timing_min=3.070903e-02
+** istep=1
+15 ** i=53  ipsi_in=53  ipsi_out=90
+7 ** i=53  ipsi_in=53  ipsi_out=90
+5 ** i=53  ipsi_in=53  ipsi_out=90
+2 ** i=0  ipsi_in=0  ipsi_out=68
+6 ** i=0  ipsi_in=0  ipsi_out=68
+14 ** i=0  ipsi_in=0  ipsi_out=68
+8 ** i=0  ipsi_in=0  ipsi_out=68
+9 ** i=53  ipsi_in=53  ipsi_out=90
+12 ** i=0  ipsi_in=0  ipsi_out=68
+1 ** i=53  ipsi_in=53  ipsi_out=90
+11 ** i=53  ipsi_in=53  ipsi_out=90
+13 ** i=53  ipsi_in=53  ipsi_out=90
+15 ** i=54  ipsi_in=53  ipsi_out=90
+3 ** i=53  ipsi_in=53  ipsi_out=90
+0 ** i=0  ipsi_in=0  ipsi_out=68
+10 ** i=0  ipsi_in=0  ipsi_out=68
+7 ** i=54  ipsi_in=53  ipsi_out=90
+5 ** i=54  ipsi_in=53  ipsi_out=90
+9 ** i=54  ipsi_in=53  ipsi_out=90
+poisson solver: 34 0 1.000000 0.000000 19805 2026
+1 ** i=54  ipsi_in=53  ipsi_out=90
+11 ** i=54  ipsi_in=53  ipsi_out=90
+13 ** i=54  ipsi_in=53  ipsi_out=90
+4 ** i=0  ipsi_in=0  ipsi_out=68
+3 ** i=54  ipsi_in=53  ipsi_out=90
+15 ** i=55  ipsi_in=53  ipsi_out=90
+7 ** i=55  ipsi_in=53  ipsi_out=90
+5 ** i=55  ipsi_in=53  ipsi_out=90
+9 ** i=55  ipsi_in=53  ipsi_out=90
+1 ** i=55  ipsi_in=53  ipsi_out=90
+11 ** i=55  ipsi_in=53  ipsi_out=90
+13 ** i=55  ipsi_in=53  ipsi_out=90
+3 ** i=55  ipsi_in=53  ipsi_out=90
+15 ** i=56  ipsi_in=53  ipsi_out=90
+7 ** i=56  ipsi_in=53  ipsi_out=90
+5 ** i=56  ipsi_in=53  ipsi_out=90
+9 ** i=56  ipsi_in=53  ipsi_out=90
+1 ** i=56  ipsi_in=53  ipsi_out=90
+11 ** i=56  ipsi_in=53  ipsi_out=90
+13 ** i=56  ipsi_in=53  ipsi_out=90
+3 ** i=56  ipsi_in=53  ipsi_out=90
+15 ** i=57  ipsi_in=53  ipsi_out=90
+7 ** i=57  ipsi_in=53  ipsi_out=90
+5 ** i=57  ipsi_in=53  ipsi_out=90
+13 ** i=57  ipsi_in=53  ipsi_out=90
+13 ** i=58  ipsi_in=53  ipsi_out=90
+9 ** i=57  ipsi_in=53  ipsi_out=90
+9 ** i=58  ipsi_in=53  ipsi_out=90
+1 ** i=57  ipsi_in=53  ipsi_out=90
+1 ** i=58  ipsi_in=53  ipsi_out=90
+15 ** i=58  ipsi_in=53  ipsi_out=90
+11 ** i=57  ipsi_in=53  ipsi_out=90
+11 ** i=58  ipsi_in=53  ipsi_out=90
+7 ** i=58  ipsi_in=53  ipsi_out=90
+3 ** i=57  ipsi_in=53  ipsi_out=90
+5 ** i=58  ipsi_in=53  ipsi_out=90
+3 ** i=58  ipsi_in=53  ipsi_out=90
+15 ** i=59  ipsi_in=53  ipsi_out=90
+7 ** i=59  ipsi_in=53  ipsi_out=90
+5 ** i=59  ipsi_in=53  ipsi_out=90
+1 ** i=59  ipsi_in=53  ipsi_out=90
+1 ** i=60  ipsi_in=53  ipsi_out=90
+7 ** i=60  ipsi_in=53  ipsi_out=90
+13 ** i=59  ipsi_in=53  ipsi_out=90
+13 ** i=60  ipsi_in=53  ipsi_out=90
+9 ** i=59  ipsi_in=53  ipsi_out=90
+9 ** i=60  ipsi_in=53  ipsi_out=90
+5 ** i=60  ipsi_in=53  ipsi_out=90
+3 ** i=59  ipsi_in=53  ipsi_out=90
+3 ** i=60  ipsi_in=53  ipsi_out=90
+11 ** i=59  ipsi_in=53  ipsi_out=90
+11 ** i=60  ipsi_in=53  ipsi_out=90
+15 ** i=60  ipsi_in=53  ipsi_out=90
+15 ** i=61  ipsi_in=53  ipsi_out=90
+7 ** i=61  ipsi_in=53  ipsi_out=90
+5 ** i=61  ipsi_in=53  ipsi_out=90
+1 ** i=61  ipsi_in=53  ipsi_out=90
+9 ** i=61  ipsi_in=53  ipsi_out=90
+13 ** i=61  ipsi_in=53  ipsi_out=90
+11 ** i=61  ipsi_in=53  ipsi_out=90
+3 ** i=61  ipsi_in=53  ipsi_out=90
+15 ** i=62  ipsi_in=53  ipsi_out=90
+7 ** i=62  ipsi_in=53  ipsi_out=90
+5 ** i=62  ipsi_in=53  ipsi_out=90
+1 ** i=62  ipsi_in=53  ipsi_out=90
+9 ** i=62  ipsi_in=53  ipsi_out=90
+11 ** i=62  ipsi_in=53  ipsi_out=90
+13 ** i=62  ipsi_in=53  ipsi_out=90
+3 ** i=62  ipsi_in=53  ipsi_out=90
+15 ** i=63  ipsi_in=53  ipsi_out=90
+7 ** i=63  ipsi_in=53  ipsi_out=90
+5 ** i=63  ipsi_in=53  ipsi_out=90
+1 ** i=63  ipsi_in=53  ipsi_out=90
+9 ** i=63  ipsi_in=53  ipsi_out=90
+11 ** i=63  ipsi_in=53  ipsi_out=90
+13 ** i=63  ipsi_in=53  ipsi_out=90
+3 ** i=63  ipsi_in=53  ipsi_out=90
+15 ** i=64  ipsi_in=53  ipsi_out=90
+7 ** i=64  ipsi_in=53  ipsi_out=90
+5 ** i=64  ipsi_in=53  ipsi_out=90
+1 ** i=64  ipsi_in=53  ipsi_out=90
+9 ** i=64  ipsi_in=53  ipsi_out=90
+13 ** i=64  ipsi_in=53  ipsi_out=90
+11 ** i=64  ipsi_in=53  ipsi_out=90
+3 ** i=64  ipsi_in=53  ipsi_out=90
+15 ** i=65  ipsi_in=53  ipsi_out=90
+7 ** i=65  ipsi_in=53  ipsi_out=90
+5 ** i=65  ipsi_in=53  ipsi_out=90
+1 ** i=65  ipsi_in=53  ipsi_out=90
+13 ** i=65  ipsi_in=53  ipsi_out=90
+11 ** i=65  ipsi_in=53  ipsi_out=90
+9 ** i=65  ipsi_in=53  ipsi_out=90
+3 ** i=65  ipsi_in=53  ipsi_out=90
+15 ** i=66  ipsi_in=53  ipsi_out=90
+7 ** i=66  ipsi_in=53  ipsi_out=90
+5 ** i=66  ipsi_in=53  ipsi_out=90
+1 ** i=66  ipsi_in=53  ipsi_out=90
+13 ** i=66  ipsi_in=53  ipsi_out=90
+11 ** i=66  ipsi_in=53  ipsi_out=90
+9 ** i=66  ipsi_in=53  ipsi_out=90
+3 ** i=66  ipsi_in=53  ipsi_out=90
+15 ** i=67  ipsi_in=53  ipsi_out=90
+7 ** i=67  ipsi_in=53  ipsi_out=90
+5 ** i=67  ipsi_in=53  ipsi_out=90
+1 ** i=67  ipsi_in=53  ipsi_out=90
+13 ** i=67  ipsi_in=53  ipsi_out=90
+9 ** i=67  ipsi_in=53  ipsi_out=90
+11 ** i=67  ipsi_in=53  ipsi_out=90
+3 ** i=67  ipsi_in=53  ipsi_out=90
+15 ** i=68  ipsi_in=53  ipsi_out=90
+7 ** i=68  ipsi_in=53  ipsi_out=90
+5 ** i=68  ipsi_in=53  ipsi_out=90
+1 ** i=68  ipsi_in=53  ipsi_out=90
+13 ** i=68  ipsi_in=53  ipsi_out=90
+9 ** i=68  ipsi_in=53  ipsi_out=90
+11 ** i=68  ipsi_in=53  ipsi_out=90
+3 ** i=68  ipsi_in=53  ipsi_out=90
+15 ** i=69  ipsi_in=53  ipsi_out=90
+7 ** i=69  ipsi_in=53  ipsi_out=90
+5 ** i=69  ipsi_in=53  ipsi_out=90
+1 ** i=69  ipsi_in=53  ipsi_out=90
+9 ** i=69  ipsi_in=53  ipsi_out=90
+13 ** i=69  ipsi_in=53  ipsi_out=90
+11 ** i=69  ipsi_in=53  ipsi_out=90
+3 ** i=69  ipsi_in=53  ipsi_out=90
+15 ** i=70  ipsi_in=53  ipsi_out=90
+7 ** i=70  ipsi_in=53  ipsi_out=90
+5 ** i=70  ipsi_in=53  ipsi_out=90
+1 ** i=70  ipsi_in=53  ipsi_out=90
+9 ** i=70  ipsi_in=53  ipsi_out=90
+13 ** i=70  ipsi_in=53  ipsi_out=90
+11 ** i=70  ipsi_in=53  ipsi_out=90
+3 ** i=70  ipsi_in=53  ipsi_out=90
+15 ** i=71  ipsi_in=53  ipsi_out=90
+7 ** i=71  ipsi_in=53  ipsi_out=90
+5 ** i=71  ipsi_in=53  ipsi_out=90
+1 ** i=71  ipsi_in=53  ipsi_out=90
+13 ** i=71  ipsi_in=53  ipsi_out=90
+9 ** i=71  ipsi_in=53  ipsi_out=90
+11 ** i=71  ipsi_in=53  ipsi_out=90
+3 ** i=71  ipsi_in=53  ipsi_out=90
+15 ** i=72  ipsi_in=53  ipsi_out=90
+7 ** i=72  ipsi_in=53  ipsi_out=90
+5 ** i=72  ipsi_in=53  ipsi_out=90
+1 ** i=72  ipsi_in=53  ipsi_out=90
+13 ** i=72  ipsi_in=53  ipsi_out=90
+9 ** i=72  ipsi_in=53  ipsi_out=90
+11 ** i=72  ipsi_in=53  ipsi_out=90
+3 ** i=72  ipsi_in=53  ipsi_out=90
+15 ** i=73  ipsi_in=53  ipsi_out=90
+7 ** i=73  ipsi_in=53  ipsi_out=90
+5 ** i=73  ipsi_in=53  ipsi_out=90
+1 ** i=73  ipsi_in=53  ipsi_out=90
+13 ** i=73  ipsi_in=53  ipsi_out=90
+9 ** i=73  ipsi_in=53  ipsi_out=90
+11 ** i=73  ipsi_in=53  ipsi_out=90
+3 ** i=73  ipsi_in=53  ipsi_out=90
+15 ** i=74  ipsi_in=53  ipsi_out=90
+7 ** i=74  ipsi_in=53  ipsi_out=90
+5 ** i=74  ipsi_in=53  ipsi_out=90
+1 ** i=74  ipsi_in=53  ipsi_out=90
+13 ** i=74  ipsi_in=53  ipsi_out=90
+9 ** i=74  ipsi_in=53  ipsi_out=90
+11 ** i=74  ipsi_in=53  ipsi_out=90
+3 ** i=74  ipsi_in=53  ipsi_out=90
+15 ** i=75  ipsi_in=53  ipsi_out=90
+7 ** i=75  ipsi_in=53  ipsi_out=90
+5 ** i=75  ipsi_in=53  ipsi_out=90
+1 ** i=75  ipsi_in=53  ipsi_out=90
+13 ** i=75  ipsi_in=53  ipsi_out=90
+9 ** i=75  ipsi_in=53  ipsi_out=90
+11 ** i=75  ipsi_in=53  ipsi_out=90
+3 ** i=75  ipsi_in=53  ipsi_out=90
+15 ** i=76  ipsi_in=53  ipsi_out=90
+7 ** i=76  ipsi_in=53  ipsi_out=90
+5 ** i=76  ipsi_in=53  ipsi_out=90
+1 ** i=76  ipsi_in=53  ipsi_out=90
+13 ** i=76  ipsi_in=53  ipsi_out=90
+9 ** i=76  ipsi_in=53  ipsi_out=90
+11 ** i=76  ipsi_in=53  ipsi_out=90
+3 ** i=76  ipsi_in=53  ipsi_out=90
+15 ** i=77  ipsi_in=53  ipsi_out=90
+7 ** i=77  ipsi_in=53  ipsi_out=90
+5 ** i=77  ipsi_in=53  ipsi_out=90
+1 ** i=77  ipsi_in=53  ipsi_out=90
+9 ** i=77  ipsi_in=53  ipsi_out=90
+13 ** i=77  ipsi_in=53  ipsi_out=90
+11 ** i=77  ipsi_in=53  ipsi_out=90
+3 ** i=77  ipsi_in=53  ipsi_out=90
+15 ** i=78  ipsi_in=53  ipsi_out=90
+7 ** i=78  ipsi_in=53  ipsi_out=90
+5 ** i=78  ipsi_in=53  ipsi_out=90
+1 ** i=78  ipsi_in=53  ipsi_out=90
+9 ** i=78  ipsi_in=53  ipsi_out=90
+13 ** i=78  ipsi_in=53  ipsi_out=90
+11 ** i=78  ipsi_in=53  ipsi_out=90
+3 ** i=78  ipsi_in=53  ipsi_out=90
+15 ** i=79  ipsi_in=53  ipsi_out=90
+7 ** i=79  ipsi_in=53  ipsi_out=90
+5 ** i=79  ipsi_in=53  ipsi_out=90
+1 ** i=79  ipsi_in=53  ipsi_out=90
+13 ** i=79  ipsi_in=53  ipsi_out=90
+9 ** i=79  ipsi_in=53  ipsi_out=90
+11 ** i=79  ipsi_in=53  ipsi_out=90
+3 ** i=79  ipsi_in=53  ipsi_out=90
+15 ** i=80  ipsi_in=53  ipsi_out=90
+7 ** i=80  ipsi_in=53  ipsi_out=90
+5 ** i=80  ipsi_in=53  ipsi_out=90
+1 ** i=80  ipsi_in=53  ipsi_out=90
+13 ** i=80  ipsi_in=53  ipsi_out=90
+9 ** i=80  ipsi_in=53  ipsi_out=90
+11 ** i=80  ipsi_in=53  ipsi_out=90
+3 ** i=80  ipsi_in=53  ipsi_out=90
+15 ** i=81  ipsi_in=53  ipsi_out=90
+7 ** i=81  ipsi_in=53  ipsi_out=90
+5 ** i=81  ipsi_in=53  ipsi_out=90
+1 ** i=81  ipsi_in=53  ipsi_out=90
+13 ** i=81  ipsi_in=53  ipsi_out=90
+9 ** i=81  ipsi_in=53  ipsi_out=90
+11 ** i=81  ipsi_in=53  ipsi_out=90
+3 ** i=81  ipsi_in=53  ipsi_out=90
+15 ** i=82  ipsi_in=53  ipsi_out=90
+7 ** i=82  ipsi_in=53  ipsi_out=90
+5 ** i=82  ipsi_in=53  ipsi_out=90
+1 ** i=82  ipsi_in=53  ipsi_out=90
+13 ** i=82  ipsi_in=53  ipsi_out=90
+9 ** i=82  ipsi_in=53  ipsi_out=90
+11 ** i=82  ipsi_in=53  ipsi_out=90
+3 ** i=82  ipsi_in=53  ipsi_out=90
+15 ** i=83  ipsi_in=53  ipsi_out=90
+7 ** i=83  ipsi_in=53  ipsi_out=90
+5 ** i=83  ipsi_in=53  ipsi_out=90
+1 ** i=83  ipsi_in=53  ipsi_out=90
+13 ** i=83  ipsi_in=53  ipsi_out=90
+9 ** i=83  ipsi_in=53  ipsi_out=90
+11 ** i=83  ipsi_in=53  ipsi_out=90
+3 ** i=83  ipsi_in=53  ipsi_out=90
+15 ** i=84  ipsi_in=53  ipsi_out=90
+7 ** i=84  ipsi_in=53  ipsi_out=90
+5 ** i=84  ipsi_in=53  ipsi_out=90
+1 ** i=84  ipsi_in=53  ipsi_out=90
+13 ** i=84  ipsi_in=53  ipsi_out=90
+9 ** i=84  ipsi_in=53  ipsi_out=90
+11 ** i=84  ipsi_in=53  ipsi_out=90
+3 ** i=84  ipsi_in=53  ipsi_out=90
+15 ** i=85  ipsi_in=53  ipsi_out=90
+7 ** i=85  ipsi_in=53  ipsi_out=90
+5 ** i=85  ipsi_in=53  ipsi_out=90
+1 ** i=85  ipsi_in=53  ipsi_out=90
+13 ** i=85  ipsi_in=53  ipsi_out=90
+9 ** i=85  ipsi_in=53  ipsi_out=90
+11 ** i=85  ipsi_in=53  ipsi_out=90
+3 ** i=85  ipsi_in=53  ipsi_out=90
+15 ** i=86  ipsi_in=53  ipsi_out=90
+7 ** i=86  ipsi_in=53  ipsi_out=90
+5 ** i=86  ipsi_in=53  ipsi_out=90
+1 ** i=86  ipsi_in=53  ipsi_out=90
+9 ** i=86  ipsi_in=53  ipsi_out=90
+13 ** i=86  ipsi_in=53  ipsi_out=90
+11 ** i=86  ipsi_in=53  ipsi_out=90
+3 ** i=86  ipsi_in=53  ipsi_out=90
+15 ** i=87  ipsi_in=53  ipsi_out=90
+7 ** i=87  ipsi_in=53  ipsi_out=90
+5 ** i=87  ipsi_in=53  ipsi_out=90
+1 ** i=87  ipsi_in=53  ipsi_out=90
+13 ** i=87  ipsi_in=53  ipsi_out=90
+9 ** i=87  ipsi_in=53  ipsi_out=90
+11 ** i=87  ipsi_in=53  ipsi_out=90
+3 ** i=87  ipsi_in=53  ipsi_out=90
+15 ** i=88  ipsi_in=53  ipsi_out=90
+7 ** i=88  ipsi_in=53  ipsi_out=90
+5 ** i=88  ipsi_in=53  ipsi_out=90
+1 ** i=88  ipsi_in=53  ipsi_out=90
+13 ** i=88  ipsi_in=53  ipsi_out=90
+9 ** i=88  ipsi_in=53  ipsi_out=90
+11 ** i=88  ipsi_in=53  ipsi_out=90
+3 ** i=88  ipsi_in=53  ipsi_out=90
+15 ** i=89  ipsi_in=53  ipsi_out=90
+7 ** i=89  ipsi_in=53  ipsi_out=90
+5 ** i=89  ipsi_in=53  ipsi_out=90
+1 ** i=89  ipsi_in=53  ipsi_out=90
+13 ** i=89  ipsi_in=53  ipsi_out=90
+9 ** i=89  ipsi_in=53  ipsi_out=90
+11 ** i=89  ipsi_in=53  ipsi_out=90
+15 ** i=90  ipsi_in=53  ipsi_out=90
+3 ** i=89  ipsi_in=53  ipsi_out=90
+7 ** i=90  ipsi_in=53  ipsi_out=90
+5 ** i=90  ipsi_in=53  ipsi_out=90
+1 ** i=90  ipsi_in=53  ipsi_out=90
+13 ** i=90  ipsi_in=53  ipsi_out=90
+9 ** i=90  ipsi_in=53  ipsi_out=90
+11 ** i=90  ipsi_in=53  ipsi_out=90
+15 ** i=91  ipsi_in=53  ipsi_out=90
+15 ** i=92  ipsi_in=53  ipsi_out=90
+15 ** i=93  ipsi_in=53  ipsi_out=90
+15 ** i=94  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+[sith7:24439] *** Process received signal ***
+[sith7:24439] Signal: Aborted (6)
+[sith7:24439] Signal code:  (-6)
+7 ** i=91  ipsi_in=53  ipsi_out=90
+7 ** i=92  ipsi_in=53  ipsi_out=90
+7 ** i=93  ipsi_in=53  ipsi_out=90
+7 ** i=94  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+5 ** i=91  ipsi_in=53  ipsi_out=90
+5 ** i=92  ipsi_in=53  ipsi_out=90
+5 ** i=93  ipsi_in=53  ipsi_out=90
+5 ** i=94  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+[sith7:24431] *** Process received signal ***
+[sith7:24431] Signal: Aborted (6)
+[sith7:24431] Signal code:  (-6)
+[sith7:24429] *** Process received signal ***
+[sith7:24429] Signal: Aborted (6)
+[sith7:24429] Signal code:  (-6)
+1 ** i=91  ipsi_in=53  ipsi_out=90
+1 ** i=92  ipsi_in=53  ipsi_out=90
+1 ** i=93  ipsi_in=53  ipsi_out=90
+1 ** i=94  ipsi_in=53  ipsi_out=90
+3 ** i=90  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+[sith7:24425] *** Process received signal ***
+[sith7:24425] Signal: Aborted (6)
+[sith7:24425] Signal code:  (-6)
+[sith7:24439] *** End of error message ***
+[sith7:24425] *** End of error message ***
+[sith7:24431] *** End of error message ***
+[sith7:24429] *** End of error message ***
+13 ** i=91  ipsi_in=53  ipsi_out=90
+13 ** i=92  ipsi_in=53  ipsi_out=90
+13 ** i=93  ipsi_in=53  ipsi_out=90
+13 ** i=94  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+[sith7:24437] *** Process received signal ***
+[sith7:24437] Signal: Aborted (6)
+[sith7:24437] Signal code:  (-6)
+9 ** i=91  ipsi_in=53  ipsi_out=90
+9 ** i=92  ipsi_in=53  ipsi_out=90
+9 ** i=93  ipsi_in=53  ipsi_out=90
+9 ** i=94  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+[sith7:24433] *** Process received signal ***
+[sith7:24433] Signal: Aborted (6)
+[sith7:24433] Signal code:  (-6)
+[sith7:24437] *** End of error message ***
+[sith7:24433] *** End of error message ***
+11 ** i=91  ipsi_in=53  ipsi_out=90
+11 ** i=92  ipsi_in=53  ipsi_out=90
+11 ** i=93  ipsi_in=53  ipsi_out=90
+11 ** i=94  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+[sith7:24435] *** Process received signal ***
+[sith7:24435] Signal: Aborted (6)
+[sith7:24435] Signal code:  (-6)
+[sith7:24435] *** End of error message ***
+3 ** i=91  ipsi_in=53  ipsi_out=90
+3 ** i=92  ipsi_in=53  ipsi_out=90
+3 ** i=93  ipsi_in=53  ipsi_out=90
+3 ** i=94  ipsi_in=53  ipsi_out=90
+bench_gtc_sith_pgcc_debug: poisson.c:100: poisson_initial: Assertion `ij0>=0' failed.
+[sith7:24427] *** Process received signal ***
+[sith7:24427] Signal: Aborted (6)
+[sith7:24427] Signal code:  (-6)
+[sith7:24427] *** End of error message ***
+--------------------------------------------------------------------------
+mpirun noticed that process rank 5 with PID 24429 on node sith7 exited on signal 6 (Aborted).
+--------------------------------------------------------------------------

@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<adios-config host-language="C">
+
+<adios-group name="moments">
+  <var name="mgrid" type="integer"/>
+  <var name="ntoroidal" type="integer"/>
+  <var name="igrid_moments_in" type="integer"/>
+  <var name="igrid_nover_in" type="integer"/>
+  <var name="nloc_nover" type="integer"/>
+  <var name="nloc_calc_moments" type="integer"/>
+  <var name="myrank_toroidal" type="integer"/>
+  <attribute name="description" path="/myrank_toroidal" type="string"
+      value="rank of MPI process in toroidal communicator"/>
+
+ <global-bounds dimensions="ntoroidal,mgrid,7"
+   offsets="myrank_toroidal,igrid_moments_in,0">
+  <var name="moments" gwrite="momentstmp+7*(igrid_nover_in-igrid_moments_in)" 
+   type="double" dimensions="1,nloc_calc_moments,7"/>
+ </global-bounds>
+
+</adios-group>
+
+<method method="MPI" group="moments"/>
+
+<buffer size-MB="100" allocate-time="now"/>
+<!-- or free-memory-percentage="90" allocate-time="oncall" -->
+</adios-config>

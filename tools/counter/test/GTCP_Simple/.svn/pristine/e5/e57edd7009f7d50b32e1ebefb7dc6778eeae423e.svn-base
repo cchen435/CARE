@@ -1,0 +1,36 @@
+import sys
+
+# Variables
+nodestr = ""
+nodes = []
+
+# Open and read file
+fname = sys.argv[1]
+f = open(fname)
+l = f.readline()
+
+# Check value of first item read
+lmod = l.rstrip('\n')
+if not lmod:
+  print "node file empty"
+  sys.exit()
+nodes.append(lmod)
+nodestr += lmod
+
+# Read rest of file
+while 1:
+  l = f.readline()
+  if not l:
+    break
+  lmod = l.rstrip('\n')
+  if (lmod not in nodes):
+    nodes.append(lmod)
+    nodestr += "," 
+    nodestr += lmod
+
+# Now we have alist of the node names with 
+# no repetition
+
+
+# output
+print nodestr

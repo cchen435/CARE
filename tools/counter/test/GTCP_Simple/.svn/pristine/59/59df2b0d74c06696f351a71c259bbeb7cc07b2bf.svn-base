@@ -1,0 +1,26 @@
+Header string : "ion_dens:para_mom:para_press:perp_press:para_flux:perp_flux:n"
+
+
+Dev
+======
+twoD[1-3].txt: output of first dimreduce, using bp file as input.
+twoD[4-6].txt: output of first dimreduce, using flexpath as input.
+
+
+Checking sel-inds
+=================
+log files: 
+- run1 corresponds to twoD8.txt
+- run2 corresponds to twoD9.txt
+
+Input file
+==========
+data sizes:
+A.txt: 32449
+B.txt: 128893
+C.txt: 513785
+D.txt: 2051567
+
+mstep: make 20
+mpsi, mthetamax, r0: values * 2 = output size * 4
+ 

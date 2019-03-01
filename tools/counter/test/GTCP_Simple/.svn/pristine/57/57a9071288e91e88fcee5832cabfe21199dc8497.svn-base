@@ -1,0 +1,39 @@
+4 procs
+select step 0: ave vm = 293770.000000, ave resident memory = 11194.500000
+select step 5: ave vm = 303285.833333, ave resident memory = 12559.500000
+select step 10: ave vm = 303517.500000, ave resident memory = 12638.833333
+select step 15: ave vm = 303520.500000, ave resident memory = 12674.333333
+select step 20: ave vm = 303520.500000, ave resident memory = 12696.500000
+8 procs
+select step 0: ave vm = 310116.916667, ave resident memory = 11706.666667
+select step 5: ave vm = 319795.250000, ave resident memory = 13129.416667
+select step 10: ave vm = 319759.250000, ave resident memory = 13165.250000
+select step 15: ave vm = 319759.250000, ave resident memory = 13165.250000
+select step 20: ave vm = 319759.250000, ave resident memory = 13165.250000
+2 procs
+select step 0: ave vm = 285681.000000, ave resident memory = 11309.333333
+select step 5: ave vm = 295401.333333, ave resident memory = 12760.000000
+select step 10: ave vm = 295508.000000, ave resident memory = 12878.666667
+select step 15: ave vm = 295476.000000, ave resident memory = 12910.666667
+select step 20: ave vm = 295476.000000, ave resident memory = 12910.666667
+12 procs
+select step 0: ave vm = 326517.777778, ave resident memory = 11487.666667
+select step 5: ave vm = 336102.888889, ave resident memory = 12842.666667
+select step 10: ave vm = 336136.722222, ave resident memory = 12869.055556
+select step 15: ave vm = 336136.722222, ave resident memory = 12874.500000
+select step 20: ave vm = 336136.722222, ave resident memory = 12878.388889
+select step 0: ave vm = 327139.000000, ave resident memory = 12315.055556
+select step 5: ave vm = 337197.166667, ave resident memory = 14059.666667
+select step 10: ave vm = 337208.166667, ave resident memory = 14079.611111
+select step 15: ave vm = 337208.166667, ave resident memory = 14079.833333
+select step 20: ave vm = 337208.166667, ave resident memory = 14080.000000
+select step 25: ave vm = 337208.166667, ave resident memory = 14081.222222
+select step 30: ave vm = 337208.166667, ave resident memory = 14088.944444
+select step 35: ave vm = 337208.166667, ave resident memory = 14091.500000
+select step 40: ave vm = 337221.000000, ave resident memory = 14096.500000
+select step 45: ave vm = 337230.166667, ave resident memory = 14134.833333
+select step 50: ave vm = 337230.166667, ave resident memory = 14138.888889
+select step 55: ave vm = 337235.666667, ave resident memory = 14141.555556
+select step 60: ave vm = 337241.166667, ave resident memory = 14153.111111
+select step 65: ave vm = 337241.166667, ave resident memory = 14154.888889
+select step 70: ave vm = 337241.166667, ave resident memory = 14156.500000

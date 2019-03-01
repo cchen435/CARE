@@ -1,0 +1,22 @@
+# Define the following to 1 to enable build
+BENCH_GTC_MPI = 1
+BENCH_CHARGEI_PTHREADS = 0
+BENCH_PUSHI_PTHREADS = 0
+BENCH_SERIAL = 0
+
+CC = mpicc
+MPICC = mpicc
+CFLAGS = -std=c99 -mmic -m64 -Wall -wd981 -wd1572 -DUSE_MPI=1
+CFLAGSOMP = -openmp
+COPTFLAGS = -O3 -mcmodel=medium 
+CDEPFLAGS = -MD 
+CLDFLAGS =
+CMICFLAGS = -mmic
+MPIDIR = 
+CFLAGS  +=
+
+EXEEXT = _stampede_mic
+
+AR = ar
+ARCRFLAGS = cr
+RANLIB = ranlib

@@ -1,0 +1,30 @@
+# Define the following to 1 to enable build
+BENCH_GTC_MPI = 1
+BENCH_CHARGEI_PTHREADS = 0
+BENCH_PUSHI_PTHREADS = 0
+BENCH_SERIAL = 0
+#ADIOS_DIR=/home/apchamp/proj/adiosInstall
+#MXML_DIR=/home/apchamp/proj/mxmlInstall
+#CERCS_DIR=/home/apchamp/proj
+ADIOS_DIR = ${ADIOSGIT}
+ADIOS_INC := $(shell ${ADIOS_DIR}/bin/adios_config -c)
+ADIOS_FLIB := $(shell ${ADIOS_DIR}/bin/adios_config -l)
+MXML_DIR = /net/hp100/achampsa/mxmlInstall
+CERCS_DIR = /net/hp41/chaos/rhe6-64
+
+CC = mpicc
+MPICC = mpicc
+#-fopenmp
+#CFLAGS = -g -Wall -Wextra -pedantic -std=gnu99 -DUSE_MPI=1 -DUSE_ADIOS=1 -I$(ADIOS_DIR)/include \
+#				 -I$(CERCS_DIR)/include
+CFLAGS = -g -fopenmp -Wall -Wextra -pedantic -std=gnu99 -DUSE_MPI=1 -DUSE_ADIOS=1 $(ADIOS_INC)
+COPTFLAGS = -O0
+CDEPFLAGS = -MD 
+#CLDFLAGS = -L$(ADIOS_DIR)/lib -ladios -L$(MXML_DIR)/lib -lmxml -L$(CERCS_DIR)/lib -levpath -lm
+CLDFLAGS = $(ADIOS_FLIB)
+
+EXEEXT = _sith_gcc_debug
+
+AR = ar
+ARCRFLAGS = cr
+RANLIB = ranlib

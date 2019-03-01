@@ -1,0 +1,30 @@
+# Define the following to 1 to enable build
+BENCH_GTC_MPI = 1
+BENCH_CHARGEI_PTHREADS = 0
+BENCH_PUSHI_PTHREADS = 0
+BENCH_SERIAL = 0
+
+# Set ADIOS DIR
+override ADIOS_INC:=`${ADIOS_DIR}/bin/adios_config -c`
+override ADIOS_LIB:=`${ADIOS_DIR}/bin/adios_config -l`
+
+
+CC = mpicc
+MPICC = mpicc
+CFLAGS = -c99 ${ADIOS_INC} -DUSE_MPI=1 -DUSE_ADIOS=1
+#CFLAGSOMP =
+CFLAGSOMP = -mp=numa
+COPTFLAGS = -g
+CDEPFLAGS = -MD 
+CLDFLAGS =
+MPIDIR = 
+CFLAGS  +=
+
+LIB = ${ADIOS_LIB}
+
+
+EXEEXT = _sith_pgcc_debug
+
+AR = ar
+ARCRFLAGS = cr
+RANLIB = ranlib

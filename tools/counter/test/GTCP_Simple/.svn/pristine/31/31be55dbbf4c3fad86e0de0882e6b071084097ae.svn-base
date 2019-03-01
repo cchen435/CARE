@@ -1,0 +1,22 @@
+# Define the following to 1 to enable build
+BENCH_GTC_MPI = 1
+BENCH_CHARGEI_PTHREADS = 0
+BENCH_PUSHI_PTHREADS = 0
+BENCH_SERIAL = 0
+
+CC = mpixlc_r
+MPICC = mpixlc_r
+CFLAGS = -DUSE_MPI=1 -qarch=450d -qtune=450
+CFLAGSOMP = -qhot=simd -qsmp=omp
+COPTFLAGS = -O5
+CDEPFLAGS = 
+CLDFLAGS = 
+MPIDIR = 
+CFLAGS  +=
+
+
+EXEEXT = _intrepid_opt_mpi
+
+AR = ar
+ARCRFLAGS = cr
+RANLIB = ranlib

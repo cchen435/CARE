@@ -1,0 +1,268 @@
+#include "bench_gtc.h"
+#include <stdint.h>
+
+int restart_read(gtc_bench_data_t * gtc_input){
+  gtc_global_params_t     *params;
+  gtc_field_data_t *field_data;
+  gtc_particle_data_t *particle_data;
+  gtc_diagnosis_data_t *diagnosis_data;
+  gtc_particle_decomp_t *parallel_decomp;
+  gtc_radial_decomp_t   *radial_decomp;
+  
+  params =  &(gtc_input->global_params);
+  field_data = &(gtc_input->field_data);
+  particle_data = &(gtc_input->particle_data);
+  diagnosis_data = &(gtc_input->diagnosis_data);
+  parallel_decomp = &(gtc_input->parallel_decomp);
+  radial_decomp   = &(gtc_input->radial_decomp);
+
+  size_t ii;
+  int mstepall, mi, ntracer;
+  real *rdtemi, *pfluxpsi, *phi, *phip00, *zonali;
+  real etracer, ptracer[4];
+  real *zion0, *zion1, *zion2, *zion3, *zion4, *zion5, *zion05;
+  int mflux = params->mflux;
+  int mzeta = params->mzeta;
+  int mpsi = params->mpsi;
+  int nloc_over = radial_decomp->nloc_over;
+
+  rdtemi = diagnosis_data->rdtemi;
+  pfluxpsi = field_data->pfluxpsi;
+  phi = field_data->phi;			
+  phip00 = field_data->phip00;
+  zonali = field_data->zonali;
+
+  zion0 = particle_data->z0;
+  zion1 = particle_data->z1;
+  zion2 = particle_data->z2;
+  zion3 = particle_data->z3;
+  zion4 = particle_data->z4;
+  zion5 = particle_data->z5;
+  zion05 = particle_data->z05;
+
+  int verbose = 0;
+  char cdum[29];
+  int mype = parallel_decomp->mype;
+  if (mype < 10)
+    sprintf(cdum, "./RESTART/DATA_RESTART.0000%d", mype);
+  else if (mype < 100)
+    sprintf(cdum, "./RESTART/DATA_RESTART.000%d", mype);
+  else if (mype < 1000)
+    sprintf(cdum, "./RESTART/DATA_RESTART.00%d", mype);
+  else if (mype < 10000) 
+    sprintf(cdum, "./RESTART/DATA_RESTART.0%d", mype);
+  else 
+    sprintf(cdum, "./RESTART/DATA_RESTART.%d", mype);
+    
+  FILE *file = fopen(cdum, "r");
+  if (!file) {
+    printf("no input file for restart");
+    MPI_Abort(MPI_COMM_WORLD,1);
+  }
+  ii = fread(&mstepall, sizeof(int), 1, file);
+  if (verbose&&mype==0) printf("mstepall=%d ii=%zd\n", mstepall, ii);
+  ii = fread(&mi, sizeof(int), 1, file);
+  if (verbose&&mype==0) printf("mi=%d ii=%zd\n", mi, ii);
+  ii = fread(&ntracer, sizeof(int), 1, file);
+  if (verbose&&mype==0) printf("ntracer=%d ii=%zd\n", ntracer,ii);
+  ii = fread(rdtemi, sizeof(real), mflux, file);
+  if (verbose&&mype==0) printf("rdtemi size ii=%zd\n", ii);
+  ii = fread(pfluxpsi, sizeof(real), mflux, file);
+  if (verbose&&mype==0) printf("pfluxpsi size ii=%zd\n", ii);
+  ii = fread(phi, sizeof(real), (mzeta+1)*nloc_over, file);
+  if (verbose&&mype==0) printf("phi size ii=%zd\n", ii);
+  ii = fread(zonali, sizeof(real), mpsi+1, file);
+  if (verbose&&mype==0) printf("zonali size ii=%zd\n", ii);
+
+  if (mype==0){
+    ii = fread(&etracer, sizeof(real), 1, file);
+    if (verbose&&mype==0) printf("etracer size ii=%zd\n", ii);
+    ii= fread(ptracer, sizeof(real), 4, file);
+    if (verbose&&mype==0) printf("ptracer size ii=%zd\n", ii);
+  }
+  ii = fread(zion0, sizeof(real), mi, file);
+  ii = fread(zion1, sizeof(real), mi, file);
+  ii = fread(zion2, sizeof(real), mi, file);
+  ii = fread(zion3, sizeof(real), mi, file);
+  ii = fread(zion4, sizeof(real), mi, file);
+  ii = fread(zion5, sizeof(real), mi, file);
+  ii = fread(zion05, sizeof(real), mi, file);
+ 
+  params->mstepall = mstepall;
+  params->mi = mi;
+  params->ntracer = ntracer;
+  diagnosis_data->ptracer[0] = ptracer[0];
+  diagnosis_data->ptracer[1] = ptracer[1];
+  diagnosis_data->ptracer[2] = ptracer[2];
+  diagnosis_data->ptracer[3] = ptracer[3];
+  diagnosis_data->scalar_data[14] = etracer;
+
+  fclose(file);
+
+  //free (zonale);
+  return 0;
+}
+
+int restart_write(gtc_bench_data_t * gtc_input){
+  gtc_global_params_t     *params;
+  gtc_field_data_t *field_data;
+  gtc_particle_data_t *particle_data;
+  gtc_diagnosis_data_t *diagnosis_data;
+  gtc_particle_decomp_t *parallel_decomp;
+  gtc_radial_decomp_t   *radial_decomp;
+
+  params =  &(gtc_input->global_params);
+  field_data = &(gtc_input->field_data);
+  particle_data = &(gtc_input->particle_data);
+  diagnosis_data = &(gtc_input->diagnosis_data);
+  parallel_decomp = &(gtc_input->parallel_decomp);
+  radial_decomp   = &(gtc_input->radial_decomp);
+
+  size_t ii;
+  int mstep, mstepall, mi, ntracer;
+  real *rdtemi, *pfluxpsi, *phi, *phip00, *zonali;
+  real etracer, ptracer[4];
+  real *zion0, *zion1, *zion2, *zion3, *zion4, *zion5, *zion05;
+  int mflux = params->mflux;
+  int mzeta = params->mzeta;
+  int mpsi = params->mpsi;
+  int nloc_over = radial_decomp->nloc_over;
+
+  mstep = params->mstep;
+  mstepall = params->mstepall;
+  mstepall += istep;
+
+  mi = params->mi;
+  ntracer = params->ntracer;
+
+  rdtemi = diagnosis_data->rdtemi;
+  pfluxpsi = field_data->pfluxpsi;
+  phi = field_data->phi;
+  phip00 = field_data->phip00;
+  zonali = field_data->zonali;
+
+  ptracer[0] = diagnosis_data->ptracer[0];
+  ptracer[1] = diagnosis_data->ptracer[1];
+  ptracer[2] = diagnosis_data->ptracer[2];
+  ptracer[3] = diagnosis_data->ptracer[3];
+  etracer = diagnosis_data->scalar_data[14];
+
+  zion0 = particle_data->z0;
+  zion1 = particle_data->z1;
+  zion2 = particle_data->z2;
+  zion3 = particle_data->z3;
+  zion4 = particle_data->z4;
+  zion5 = particle_data->z5;
+  zion05 = particle_data->z05;
+
+  int verbose = 0;
+  char cdum[29];
+  int mype = parallel_decomp->mype;
+  
+  //alexis debug
+  //printf("mype: %d\n", mype);
+  //sleep(800);
+
+  if (mype < 10)
+    sprintf(cdum, "./RESTART/DATA_RESTART.0000%d", mype);
+  else if (mype < 100)
+    sprintf(cdum, "./RESTART/DATA_RESTART.000%d", mype);
+  else if (mype < 1000)
+    sprintf(cdum, "./RESTART/DATA_RESTART.00%d", mype);
+  else if (mype < 10000)
+    sprintf(cdum, "./RESTART/DATA_RESTART.0%d", mype);
+  else
+    sprintf(cdum, "./RESTART/DATA_RESTART.%d", mype);
+
+#if 0
+  FILE *file = fopen(cdum, "w");
+  if (!file) {
+    printf("no input file for restart");
+    MPI_Abort(MPI_COMM_WORLD,1);
+  }
+  if (verbose&&mype==0) printf("read %s\n", cdum);
+
+  ii = fwrite(&mstepall, sizeof(int), 1, file);
+  if (verbose&&mype==0) printf("mstepall=%d ii=%zd\n", mstepall, ii);
+  ii = fwrite(&mi, sizeof(int), 1, file);
+  if (verbose&&mype==0) printf("mi=%d ii=%zd\n", mi, ii);
+  ii = fwrite(&ntracer, sizeof(int), 1, file);
+  if (verbose&&mype==0) printf("ntracer=%d ii=%zd\n", ntracer,ii);
+  ii = fwrite(rdtemi, sizeof(real), mflux, file);
+  if (verbose&&mype==0) printf("rdtemi size ii=%zd\n", ii);
+  ii = fwrite(pfluxpsi, sizeof(real), mflux, file);
+  if (verbose&&mype==0) printf("pfluxpsi size ii=%zd\n", ii);
+  ii = fwrite(phi, sizeof(real), (mzeta+1)*nloc_over, file);
+  if (verbose&&mype==0) printf("phi size ii=%zd\n", ii);
+  ii = fwrite(zonali, sizeof(real), mpsi+1, file);
+  if (verbose&&mype==0) printf("zonali size ii=%zd\n", ii);
+
+  if (mype==0){
+    ii = fwrite(&etracer, sizeof(real), 1, file);
+    if (verbose&&mype==0) printf("etracer size ii=%zd\n", ii);
+    ii= fwrite(ptracer, sizeof(real), 4, file);
+    if (verbose&&mype==0) printf("ptracer size ii=%zd\n", ii);
+  }
+  
+  ii = fwrite(zion0, sizeof(real), mi, file);
+  ii = fwrite(zion1, sizeof(real), mi, file);
+  ii = fwrite(zion2, sizeof(real), mi, file);
+  ii = fwrite(zion3, sizeof(real), mi, file);
+  ii = fwrite(zion4, sizeof(real), mi, file);
+  ii = fwrite(zion5, sizeof(real), mi, file);
+  ii = fwrite(zion05, sizeof(real), mi, file);
+
+  fclose(file);
+#else
+    int adios_err = 0;
+    uint64_t adios_groupsize = 0;
+    uint64_t adios_totalsize = 0;
+    int64_t adios_handle = 0;
+    int ntoroidal = 0;
+    int myrank_toroidal = 0;
+    MPI_Comm comm = MPI_COMM_WORLD;
+    int32_t mi_total = mi;
+    int32_t me_total = mi;
+    int64_t numberpe = 0;
+    MPI_Comm_size (comm, &numberpe);
+    int32_t mi_offset = 0;
+    int32_t ntracer_i0 = 0;
+    int32_t misum = 0;
+    float * zion = NULL;
+    int32_t ntracer_e = 0;
+    int32_t etracer_e0 = 0;
+    int32_t mesum = 0;
+    int32_t me = mi;
+    int32_t me_offset = 0;
+    float * zeon = NULL;
+    int32_t nparam = 7;
+
+    double * my_particle_data = malloc (sizeof (double) * mi * 7);
+    memcpy (my_particle_data + (mi * 0), zion0, sizeof (double) * mi);
+    memcpy (my_particle_data + (mi * 1), zion1, sizeof (double) * mi);
+    memcpy (my_particle_data + (mi * 2), zion2, sizeof (double) * mi);
+    memcpy (my_particle_data + (mi * 3), zion3, sizeof (double) * mi);
+    memcpy (my_particle_data + (mi * 4), zion4, sizeof (double) * mi);
+    memcpy (my_particle_data + (mi * 5), zion5, sizeof (double) * mi);
+    memcpy (my_particle_data + (mi * 6), zion05, sizeof (double) * mi);
+
+    zion = my_particle_data;
+    zeon = my_particle_data;
+
+    ntoroidal = parallel_decomp->ntoroidal;
+    myrank_toroidal = parallel_decomp->myrank_toroidal;
+
+/* alex disable
+    comm = MPI_COMM_WORLD;
+    adios_err = adios_open (&adios_handle, "restart", cdum, "w", comm);
+#include "gwrite_restart.ch"
+    adios_close (adios_handle);
+*/
+
+
+    free (my_particle_data);
+#endif
+ 
+  //free (zonale);
+  return 0;
+}

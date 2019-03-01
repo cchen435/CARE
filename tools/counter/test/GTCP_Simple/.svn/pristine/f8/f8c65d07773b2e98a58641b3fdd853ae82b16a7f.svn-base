@@ -1,0 +1,9 @@
+mpirun -n 4 -H falcon4 histogram oneDpress.fp 16 oneDpress &
+mpirun -n 4 -H falcon4 dimreduce twoDpress.fp twoDpress 0 1 \
+oneDpress.fp oneDpress &> dimred2.out &
+mpirun -n 4 -H falcon3 dimreduce gtc_select.fp perp_pressures 2 1 \
+twoDpress.fp twoDpress &> dimred1.out &
+mpirun -n 4 -H falcon3 select gtc_raw.fp moments 2 gtc_select.fp \
+perp_pressures perp_press &> select.out &
+mpirun -n 8 -H falcon2 bench_gtc_sith_gcc_debug A.txt 1 2 &> sim.out &
+wait

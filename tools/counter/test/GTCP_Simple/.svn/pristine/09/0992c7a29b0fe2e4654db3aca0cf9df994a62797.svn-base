@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -A CSC094
+#PBS -N nodesTest
+#PBS -j oe
+#PBS -V
+#PBS -l walltime=00:10:00
+#PBS -l nodes=1
+
+ulimit -c unlimited
+
+mpirun -n $((numsim*4)) bench_gtc_sith_gcc_debug A.txt 1 2 &
+# unset CMTransportVerbose
+# unset CMTraceFile
+wait
+

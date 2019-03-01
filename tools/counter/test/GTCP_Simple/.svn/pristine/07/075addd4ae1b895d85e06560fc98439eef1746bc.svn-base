@@ -1,0 +1,1 @@
+qsub -I -A CSC094 -V -l nodes=4 -l walltime=00:30:00 
