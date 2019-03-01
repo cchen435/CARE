@@ -1,14 +1,21 @@
-
-cmake_minimum_required(VERSION 3.4)
-
-set(CARE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-
-find_package(LLVM REQUIRED CONFIG)
-add_definitions(${LLVM_DEFINITIONS})
-include_directories(
-    ${LLVM_INCLUDE_DIRS}
-    ${CARE_SOURCE_DIR}/include
+add_library(Counter MODULE
+    # List your source files here.
+    Counter.cpp
 )
-link_directories( ${LLVM_LIBRARY_DIRS})
 
-add_subdirectory(src)  # Use your pass name here.
+# Use C++11 to compile your pass (i.e., supply -std=c++11).
+target_compile_features(Counter PRIVATE cxx_range_for cxx_auto_type)
+
+# LLVM is (typically) built with no C++ RTTI. We need to match that;
+# otherwise, we'll get linker errors about missing RTTI data.
+set_target_properties(Counter PROPERTIES
+    COMPILE_FLAGS "-fno-rtti"
+)
+
+# Get proper shared-library behavior (where symbols are not necessarily
+# resolved when the shared library is linked) on OS X.
+if(APPLE)
+    set_target_properties(Counter PROPERTIES
+        LINK_FLAGS "-undefined dynamic_lookup"
+    )
+endif(APPLE)
