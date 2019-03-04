@@ -2,6 +2,7 @@
 from App import Application
 from Controller import GDBController
 from FIWorker import FIWorker
+from Framework import GDBFramework, PINFramework
 import json
 import logging
 import multiprocessing as mp
@@ -15,7 +16,7 @@ import time
 
 
 class GDBFIExpr(object):
-    def __init__(self, expr_path, expr_exec, exec_args, runs, base, skip_profile, fault_model, num_workers=0, log_level='debug'):
+    def __init__(self, expr_path, expr_exec, exec_args, runs, base, skip_profile, fault_model, framework, num_workers=0, log_level='debug'):
         """ GDBFIExpr represents an fault injection experiment.
 
         :param expr_path (string) : the experiment path/directory. It contains all injection data,
@@ -70,7 +71,12 @@ class GDBFIExpr(object):
         self._expr_injection_log = open(self._expr_path.joinpath(
             self._expr_path.name+'_faults.json'), 'a+')
 
-    def setup_runtime_loggers(self):
+        if framework == 'gdb':
+            self.__framework = GDBFramework(self._expr_logger)
+        elif framework == 'pin':
+            self.__framework = PINFramework(self._expr_logger)
+
+    def __setup_runtime_loggers(self):
         num_workers = self._num_workers
         logs = [None for i in range(num_workers)]
         formatter = logging.Formatter('%(asctime)s-%(levelname)s:%(message)s')
@@ -122,6 +128,7 @@ class GDBFIExpr(object):
         profile_path.mkdir()
         os.chdir(profile_path)
 
+        '''
         time = float(0)
         # we take average time as basis
         app = Application(self._expr_exec, self._exec_args)
@@ -140,6 +147,7 @@ class GDBFIExpr(object):
             "Expr %s profile run finished. Exec time: %f" % (self._expr_path.name, time))
         with open('profile_data.json', 'w') as fh:
             json.dump({'exec_time': time}, fh)
+        '''
 
         # this statment need to be put after above data
         # write statement because of current workspace issue
@@ -164,7 +172,7 @@ class GDBFIExpr(object):
 
         num_workers = self._num_workers
         queues = [mp.Queue() for i in range(num_workers)]
-        logs = self.setup_runtime_loggers()
+        logs = self.__setup_runtime_loggers()
         # split the whole workloads among num_workers
         jobs = self.gen_workloads(method='RR')
         tmps = [open(epath.joinpath("tmp-worker-%d.json" % i), 'a+')
@@ -184,7 +192,7 @@ class GDBFIExpr(object):
             for i in range(num_workers):
                 if alive[i] == 0:
                     finished = self.json_dump(queue, tmps[i], i)
-                    #[jobs[i].remove(j) if j in jobs[i] for j in finished]
+                    # [jobs[i].remove(j) if j in jobs[i] for j in finished]
                     #[jobs[i].remove(j) for j in finished]
                     [jobs[i].remove(j) for j in finished if j in jobs[i]]
                     continue
