@@ -174,8 +174,11 @@ VOID Trace(TRACE trace, VOID *V) {
 VOID Fini(INT32 code, VOID *v) {
   std::cout << "End of Pintool. BBLs: " << bbls << "\n";
   FILE *fp = fopen(KnovOutputFile.Value().c_str(), "w");
+  FILE *fp2 = fopen("gdbfi_human.profile", "w");
 
-  fprintf(fp, "%14s%50s%10s%10s%10s%30s%30s\n", "addr", "assembly", "size",
+  fprintf(fp, "%s;%s;%s;%s;%s;%s;%s\n", "addr", "assembly", "size", "MemRead",
+          "MemWrite", "function", "executions");
+  fprintf(fp2, "%14s%50s%10s%10s%10s%30s%30s\n", "addr", "assembly", "size",
           "MemRead", "MemWrite", "function", "executions");
   for (care_bbl_t *h = bbl_list; h; h = h->next) {
     for (unsigned i = 0; i < h->num; i++) {
@@ -186,11 +189,14 @@ VOID Fini(INT32 code, VOID *v) {
       UINT8 read = inst.MemRead;
       UINT8 write = inst.MemWrite;
       ADDRINT addr = inst.addr;
-      fprintf(fp, "%14lx%50s%10u%10d%10d%30s%30lu\n", addr, str, size, read,
+      fprintf(fp, "%lx;%s;%u;%d;%d;%s;%lu\n", addr, str, size, read, write, rtn,
+              h->counter);
+      fprintf(fp2, "%14lx%50s%10u%10d%10d%30s%30lu\n", addr, str, size, read,
               write, rtn, h->counter);
     }
   }
   fclose(fp);
+  fclose(fp2);
 }
 
 /* ===================================================================== */
