@@ -148,6 +148,7 @@ class GDBFIExpr(object):
         with open('profile_data.json', 'w') as fh:
             json.dump({'exec_time': time}, fh)
         '''
+        self.__framework.profile(self._expr_exec, self._exec_args)
 
         # this statment need to be put after above data
         # write statement because of current workspace issue
