@@ -14,7 +14,7 @@ from threading import Thread
 
 
 class GDBController(object):
-    def __init__(self, logger, wid, job):
+    def __init__(self, logger, wid, job, exec=None, params=None):
         """
         This is a simple wrapper to GDB using it MI2 interface
         """
@@ -43,7 +43,8 @@ class GDBController(object):
         self._wait_prompt()
 
     def log_msg(self, msg):
-        self._log.info("GDBFI-Controller (Worker %d): \t\t[%s]: %s" % (self._id, self._job, msg))
+        self._log.info(
+            "GDBFI-Controller (Worker %d): \t\t[%s]: %s" % (self._id, self._job, msg))
 
     def _wait_prompt(self):
         """ wait for response from gdb
@@ -78,7 +79,6 @@ class GDBController(object):
             record = self._GDBMIParser.parse_line(line)
             if record.type == event:
                 return record
-
 
     def build_msg(self, text):
         '''
@@ -127,6 +127,26 @@ class GDBController(object):
             return result['reason']
         else:  # status == 'error' or status == 'timeout':
             return status
+
+    def set_breakpoint(self, addr_in_hex, count=None):
+        cmd = '-break-insert *%d' % addr_in_hex
+        retval = self._execute_cmd(cmd)
+        status = retval[0]
+        if status != 'done':
+            return status
+        result = retval[1]
+        number = result['number']
+        if count:
+            cmd = '-break-after %d %d' % (number, count)
+            retval = self._execute_cmd(cmd)
+            status = retval[0]
+            if status != 'done':
+                return status
+        return number
+
+    def del_breakpoint(self, number):
+        cmd = '-break-delete %d' % number
+        self._execute_cmd(cmd)
 
     def exec_continue(self):
         cmd = '-exec-continue'

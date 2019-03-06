@@ -71,10 +71,7 @@ class GDBFIExpr(object):
         self._expr_injection_log = open(self._expr_path.joinpath(
             self._expr_path.name+'_faults.json'), 'a+')
 
-        if framework == 'gdb':
-            self.__framework = GDBFramework(self._expr_logger)
-        elif framework == 'pin':
-            self.__framework = PINFramework(self._expr_logger)
+        self.__framework = framework
 
     def __setup_runtime_loggers(self):
         num_workers = self._num_workers
@@ -114,62 +111,41 @@ class GDBFIExpr(object):
             file.flush()
         return ids
 
-    def profile(self, rounds=10):
+    def profile(self):
         """ Performs a profile run for the experiment.
         :return: execution time in seconds
         """
-        self._expr_logger.info("Expr %s profile run (rounds: %d)" % (
-            self._expr_path.name, rounds))
-
+        if self.__framework == 'gdb':
+            framework = GDBFramework(self._expr_logger)
+        elif self.__framework == 'pin':
+            framework = PINFramework(self._expr_logger)
+        self._expr_logger.info("Profile run for expr %s." %
+                               self._expr_path.name)
         profile_path = self._expr_path.joinpath('profile')
 
         if profile_path.exists():
             shutil.rmtree(str(profile_path))
         profile_path.mkdir()
+
         os.chdir(profile_path)
 
-        '''
-        time = float(0)
-        # we take average time as basis
-        app = Application(self._expr_exec, self._exec_args)
-        for iter in range(rounds):
-            app.start()
-            code = app.wait()
-            self._expr_logger.info(
-                "\tprofile run round %d (code: %s)" % (iter, code))
-            time += app.get_exec_time()
-        time /= rounds
-
-        # account for potential divergence
-        time = 0.98 * time
-
-        self._expr_logger.info(
-            "Expr %s profile run finished. Exec time: %f" % (self._expr_path.name, time))
-        with open('profile_data.json', 'w') as fh:
-            json.dump({'exec_time': time}, fh)
-        '''
-        self.__framework.profile(self._expr_exec, self._exec_args)
+        framework.profile(self._expr_exec, self._exec_args)
 
         # this statment need to be put after above data
         # write statement because of current workspace issue
         os.chdir(self._expr_path)
-        return time
 
     def run(self):
         epath = self._expr_path
         execf = self._expr_exec
         eargs = self._exec_args
 
+        self._expr_logger.info("Start experiment %s." % self._expr_path.name)
+
         if self._skip_profile:
             print("Skip Profiling and Read Profile data from file")
-            profile_path = self._expr_path.joinpath('profile')
-            profile = profile_path.joinpath('profile_data.json')
-            assert profile.exists(), 'profile data not found, maybe you need to run the profile'
-            with open(profile) as fh:
-                data = json.load(fh)
-                ptime = data['exec_time']
         else:
-            ptime = self.profile()
+            self.profile()
 
         num_workers = self._num_workers
         queues = [mp.Queue() for i in range(num_workers)]
@@ -179,7 +155,7 @@ class GDBFIExpr(object):
         tmps = [open(epath.joinpath("tmp-worker-%d.json" % i), 'a+')
                 for i in range(num_workers)]
 
-        workers = [FIWorker(i, epath, execf, eargs, jobs[i], ptime, 'bitflip', logs[i], queues[i])
+        workers = [FIWorker(i, epath, execf, eargs, jobs[i], self.__framework, 'bitflip', logs[i], queues[i])
                    for i in range(num_workers)]
 
         for i in range(num_workers):
@@ -189,7 +165,7 @@ class GDBFIExpr(object):
 
         alive = [1] * num_workers
         while sum(alive) > 0:
-            time.sleep(ptime)
+            time.sleep(3)
             for i in range(num_workers):
                 if alive[i] == 0:
                     finished = self.json_dump(queue, tmps[i], i)
@@ -217,7 +193,7 @@ class GDBFIExpr(object):
                         self._expr_logger.info("Worker %d (pid: %d) exited (code: %s). restarting" % (
                             i, workers[i].pid, str(workers[i].exitcode)))
                         workers[i] = FIWorker(
-                            i, epath, execf, eargs, jobs[i], ptime, 'bitflip', logs[i], queues[i])
+                            i, epath, execf, eargs, jobs[i], self.__framework, 'bitflip', logs[i], queues[i])
                         workers[i].start()
                     else:
                         self._expr_logger.info("Worker %d (pid: %d) finished its job and exited (code: %s)" % (

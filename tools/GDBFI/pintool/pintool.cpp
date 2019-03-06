@@ -189,8 +189,8 @@ VOID Fini(INT32 code, VOID *v) {
       UINT8 read = inst.MemRead;
       UINT8 write = inst.MemWrite;
       ADDRINT addr = inst.addr;
-      fprintf(fp, "%lx;%s;%u;%d;%d;%s;%lu\n", addr, str, size, read, write, rtn,
-              h->counter);
+      fprintf(fp, "0x%lx;%s;%u;%d;%d;%s;%lu\n", addr, str, size, read, write,
+              rtn, h->counter);
       fprintf(fp2, "%14lx%50s%10u%10d%10d%30s%30lu\n", addr, str, size, read,
               write, rtn, h->counter);
     }
