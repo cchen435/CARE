@@ -50,7 +50,7 @@ class GDBController(object):
         """ wait for response from gdb
         """
         index = self.gdbsession.expect(
-            ['\(gdb\)', pexpect.EOF, pexpect.TIMEOUT], timeout=600)
+            ['\(gdb\)', pexpect.EOF, pexpect.TIMEOUT], timeout=1200)
         if index == 0 or index == 1:
             prompt = self.gdbsession.before.decode()
         if index == 2:
@@ -129,13 +129,14 @@ class GDBController(object):
             return status
 
     def set_breakpoint(self, addr_in_hex, count=None):
-        cmd = '-break-insert *%d' % addr_in_hex
+        # cmd = '-break-insert *%d' % int(addr_in_hex, 16)
+        cmd = '-break-insert *%s' % addr_in_hex
         retval = self._execute_cmd(cmd)
         status = retval[0]
         if status != 'done':
             return status
         result = retval[1]
-        number = result['number']
+        number = int(result['bkpts'][0]['number'])
         if count:
             cmd = '-break-after %d %d' % (number, count)
             retval = self._execute_cmd(cmd)

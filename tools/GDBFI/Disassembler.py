@@ -5,6 +5,7 @@ import capstone.x86 as x86
 
 import platform     # for getting architecture info
 
+
 class GDBFIInstruction(object):
     def __init__(self, code, address=0):
         """ Instruction class represents an assembly instruction, where the
@@ -44,6 +45,8 @@ class GDBFIInstruction(object):
             inst = next(insts)
         except StopIteration:
             inst = None
+        except:
+            print("disassembler: ", code, type(code), address)
         return inst
 
     def is_valid(self):

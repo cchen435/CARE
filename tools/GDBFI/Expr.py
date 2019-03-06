@@ -117,7 +117,7 @@ class GDBFIExpr(object):
         """
         if self.__framework == 'gdb':
             framework = GDBFramework(self._expr_logger)
-        elif self.__framework == 'pin':
+        elif self.__framework == 'pintool':
             framework = PINFramework(self._expr_logger)
         self._expr_logger.info("Profile run for expr %s." %
                                self._expr_path.name)

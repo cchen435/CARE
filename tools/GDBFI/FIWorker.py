@@ -41,7 +41,7 @@ class FIWorker(mp.Process):
 
         if framework == 'gdb':
             self._framework = GDBFramework(log)
-        elif framework == 'pin':
+        elif framework == 'pintool':
             self._framework = PINFramework(log)
 
         profile_path = expr_path.joinpath('profile')
@@ -67,12 +67,15 @@ class FIWorker(mp.Process):
         self.log_msg('started successfully')
         self.log_msg("Workloads: %s" % str(self._workloads))
 
-        care_runtime_lib = Path(
-            "../../build/runtime/libCARERuntime.so").absolute()
+        '''
+        care_runtime_lib = Path(os.environ['CARE_ROOT']).joinpath(
+            'build/runtime/libCARERuntime.so').absolute()
+
         assert(care_runtime_lib.exists(),
                "the recovery runtime library is not setup yet!")
 
         os.environ["CARE_EXPR_PATH"] = str(self._expr_path)
+        '''
 
         for w in self._workloads:
             name = 'inject-%04d' % w
@@ -81,10 +84,12 @@ class FIWorker(mp.Process):
             self.log_msg('perform job %s' % name)
             wd = self._expr_path.joinpath(name)
 
+            '''
             # preload the recovery runtime library
             os.environ["LD_PRELOAD"] = str(care_runtime_lib)
             os.environ["CARE_WORKER_ID"] = str(self._id)
             os.environ["CARE_INJECTION_ID"] = str(name)
+            '''
 
             # create injection folder and making it the current working directory
             if wd.exists():

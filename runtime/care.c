@@ -35,6 +35,6 @@ int care_register_sigaction(int signo,
 /* API implementation */
 void care_user_init() {
   // registe the signal handler for SIGSEGV
-  fprintf(stdout, "care is to update signal handlers\n");
+  fprintf(stderr, "care is to update signal handlers\n");
   care_register_sigaction(SIGSEGV, care_segv_handler);
 }

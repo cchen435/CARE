@@ -51,6 +51,7 @@ typedef struct _ins {
   std::string str;
   INT8 MemWrite;
   INT8 MemRead;
+  BOOL Candidate;
 } care_ins_t;
 
 typedef struct _bbl {
@@ -107,6 +108,15 @@ static bool isTargetRTN(RTN rtn) {
   return true;
 }
 
+static BOOL isCandidateInsn(INS ins) {
+  UINT32 NumWRegs = INS_MaxNumWRegs(ins);
+  if (NumWRegs == 0) return 0;
+  REG wreg = INS_RegW(ins, 0);
+  // return (REG_is_gr8(wreg) | REG_is_gr16(wreg) | REG_is_gr32(wreg) |
+  // REG_is_gr64(wreg));
+  return !REG_is_fr(wreg);
+}
+
 VOID bbl_profile(UINT64 *counter) { (*counter)++; }
 
 VOID ImageLoad(IMG img, VOID *V) {
@@ -154,11 +164,22 @@ VOID Trace(TRACE trace, VOID *V) {
 
     for (INS ins = BBL_InsHead(bbl); INS_Valid(ins) && buf->num < num_insts;
          ins = INS_Next(ins)) {
+#if 0
+      UINT32 NumWRegs = INS_MaxNumWRegs(ins);
+      fprintf(stdout,
+              "Ins: %40s, \tNo. of write regs: %2d, \tFirst ｗrite reg: %7s, "
+              "\tCandidate: %d\n",
+              INS_Disassemble(ins).c_str(), NumWRegs,
+              NumWRegs ? REG_StringShort(INS_RegW(ins, 0)).c_str() : "None",
+              isCandidateInsn(ins));
+#endif
+
       buf->instructions[buf->num].addr = INS_Address(ins);
       buf->instructions[buf->num].str = INS_Disassemble(ins);
       buf->instructions[buf->num].size = INS_Size(ins);
       buf->instructions[buf->num].MemRead = INS_IsMemoryRead(ins);
       buf->instructions[buf->num].MemWrite = INS_IsMemoryWrite(ins);
+      buf->instructions[buf->num].Candidate = isCandidateInsn(ins);
       buf->num++;
     }
 
@@ -176,10 +197,10 @@ VOID Fini(INT32 code, VOID *v) {
   FILE *fp = fopen(KnovOutputFile.Value().c_str(), "w");
   FILE *fp2 = fopen("gdbfi_human.profile", "w");
 
-  fprintf(fp, "%s;%s;%s;%s;%s;%s;%s\n", "addr", "assembly", "size", "MemRead",
-          "MemWrite", "function", "executions");
-  fprintf(fp2, "%14s%50s%10s%10s%10s%30s%30s\n", "addr", "assembly", "size",
-          "MemRead", "MemWrite", "function", "executions");
+  fprintf(fp, "%s;%s;%s;%s;%s;%s;%s;%s\n", "addr", "assembly", "size",
+          "MemRead", "MemWrite", "function", "executions", "Candidate");
+  fprintf(fp2, "%14s%42s%10s%10s%10s%30s%15s%10s\n", "addr", "assembly", "size",
+          "MemRead", "MemWrite", "function", "executions", "Candidate");
   for (care_bbl_t *h = bbl_list; h; h = h->next) {
     for (unsigned i = 0; i < h->num; i++) {
       care_ins_t inst = h->instructions[i];
@@ -188,11 +209,12 @@ VOID Fini(INT32 code, VOID *v) {
       UINT8 size = inst.size;
       UINT8 read = inst.MemRead;
       UINT8 write = inst.MemWrite;
+      UINT8 candidate = inst.Candidate;
       ADDRINT addr = inst.addr;
-      fprintf(fp, "0x%lx;%s;%u;%d;%d;%s;%lu\n", addr, str, size, read, write,
-              rtn, h->counter);
-      fprintf(fp2, "%14lx%50s%10u%10d%10d%30s%30lu\n", addr, str, size, read,
-              write, rtn, h->counter);
+      fprintf(fp, "0x%lx;%s;%u;%d;%d;%s;%lu;%d\n", addr, str, size, read, write,
+              rtn, h->counter, candidate);
+      fprintf(fp2, "%14lx%42s%10u%10d%10d%30s%15lu%10d\n", addr, str, size,
+              read, write, rtn, h->counter, candidate);
     }
   }
   fclose(fp);

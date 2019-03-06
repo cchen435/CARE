@@ -185,10 +185,8 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
     return CARE_FAILURE;
   }
 
-#if DEBUG_ENV
-  fprintf(stderr, "Expr Path: %s, Worker: %s, Injection: %s\n\n", expr_path,
+  fprintf(stderr, "CARE: Exprment: %s, Worker: %s, Injection: %s\n", expr_path,
           worker, injection);
-#endif
 
   // simple alias to processor contest for easy access
   ucontext_t *ucontext = (ucontext_t *)sig_context;
@@ -201,6 +199,8 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   // initialize dwarf library
   context->dwarf = care_dw_open(program_invocation_name);
   if (context->dwarf == NULL) {
+    fprintf(stderr, "CARE: open %s for dwarf accessing failed.\n",
+            program_invocation_name);
     care_err_set_code(CARE_NO_DBG);
     return CARE_FAILURE;
   }
@@ -209,14 +209,16 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   sprintf(filename, "%s.tb", program_invocation_name);
   context->rtable = care_tb_load_c(filename);
   if (context->rtable == NULL) {
+    fprintf(stderr, "CARE: open recovery table %s failed.\n", filename);
     care_err_set_code(CARE_NO_TBL);
     return CARE_FAILURE;
   }
 
   // loading recovery library
-  sprintf(filename, "./lib%s.so", __progname);
+  sprintf(filename, "%s/../lib%s.so", expr_path, __progname);
   context->rlib = dlopen(filename, RTLD_LAZY);
   if (context->rlib == NULL) {
+    fprintf(stderr, "CARE: open recovery library %s failed.\n", filename);
     care_err_set_code(CARE_NO_LIB);
     return CARE_FAILURE;
   }

@@ -56,7 +56,7 @@ class GDBFIFault(object):
         fault = dict()
         fault['dyn_inst'] = self._point
         fault['parent_func'] = self._func
-        fault['insn_address'] = self._insn.Inst.address
+        fault['insn_address'] = hex(self._insn.Inst.address)
         fault['instruction'] = self._insn.get_inst_string()
         fault['inst_bytes'] = self._insn.get_inst_bytecode().hex()
         fault['inst_size'] = self._insn.get_inst_size()

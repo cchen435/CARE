@@ -18,12 +18,14 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
    * 2. initialize the disassembler and
    * 3. load the recovery library
    */
+  fprintf(stderr, "CARE: initialize the runtime\n");
   status = care_util_init(&ctx, info, context);
   if (status != CARE_SUCCESS) {
     goto fexit;
   }
 
   // diagnose the fault to figure out the operand to be updated
+  fprintf(stderr, "CARE: diagnose the failure.\n");
   status = care_util_diagnose(signo, &ctx, &target, &method);
   if (status != CARE_SUCCESS) {
     ctx.log.status = CARE_FAILURE;
@@ -34,9 +36,11 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
     ctx.log.status = CARE_FAILURE;
     goto fexit;
   } else if (method == M_UNWIND) {  // recover with unwind
+    fprintf(stderr, "CARE: recover through unwind.\n");
     care_util_unwind(1);
   } else if (method == M_REDO) {  // recover with recomputation
     // retrive recovery routine
+    fprintf(stderr, "CARE: recover through recovery kernels.\n");
     status = care_util_find_routine(&ctx, &routine);
     if (status != CARE_SUCCESS) {
       ctx.log.status = CARE_FAILURE;
