@@ -173,20 +173,21 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   char *expr_path = getenv("CARE_EXPR_PATH");
   char *worker = getenv("CARE_WORKER_ID");
   char *injection = getenv("CARE_INJECTION_ID");
-  sprintf(filename, "%s/worker_%s_record.care", expr_path, worker);
-
-  context->logfp = fopen(filename, "a");
-
-  context->log.inject = strdup(injection);
 
   // expr environment setup error
   if (!expr_path || !worker || !injection) {
+    fprintf(stderr, "No experiment related environmnt variable found.\n");
     care_err_set_code(CARE_NO_ENV);
     return CARE_FAILURE;
   }
 
   fprintf(stderr, "CARE: Exprment: %s, Worker: %s, Injection: %s\n", expr_path,
           worker, injection);
+
+  context->log.inject = strdup(injection);
+
+  sprintf(filename, "%s/worker_%s_record.care", expr_path, worker);
+  context->logfp = fopen(filename, "a");
 
   // simple alias to processor contest for easy access
   ucontext_t *ucontext = (ucontext_t *)sig_context;
@@ -321,10 +322,8 @@ care_status_t care_util_find_routine(care_context_t *context,
   retval = care_dw_get_src_info(context->dwarf, PC, &src, &line, &column);
   (fname = strrchr(src, '/')) ? ++fname : (fname = src);
 
-#ifdef DEBUG_RK
-  fprintf(stderr, "Build Key from:\n\tFile: %s\n\tLine: %d\n\tColumn: %d\n",
+  fprintf(stderr, "\tBuild Key from\tFile: %s,\tLine: %d, \tColumn: %d\n",
           fname, line, column);
-#endif
 
   sprintf(buf, "%s/%d/%d", fname, line, column);
   context->log.key = strdup(buf);
@@ -342,22 +341,11 @@ care_status_t care_util_find_routine(care_context_t *context,
   retval = care_tb_search_c(context->rtable, key, &routine->funcTy,
                             &routine->params, &routine->n_params);
 
-#ifdef DEBUG_RK
-  if (!retval)
-    fprintf(stderr, "Recovery Routine: Not Found\n");
-  else {
-    fprintf(stderr, "Recovery Routine:\n\tFunction: %s\n\tParams: ",
-            care_tb_get_function_name_c(routine->funcTy));
-    for (unsigned i = 0; i < routine->n_params; i++) {
-      fprintf(stderr, "%s ", routine->params[i]);
-    }
-  }
-#endif
   if (!retval) {
     care_err_set_code(CARE_NO_KEN);
-    return EXIT_FAILURE;
+    return CARE_FAILURE;
   }
-  return EXIT_SUCCESS;
+  return CARE_SUCCESS;
 }
 
 /**
@@ -408,6 +396,7 @@ care_status_t care_util_exec_routine(care_context_t *env,
   // initialize the cif object
   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, routine.n_params, rtype, argtypes) !=
       FFI_OK) {
+    fprintf(stderr, "CARE: Failed to initialize ffi object.\n");
     care_err_set_code(CARE_NO_FFI);
     return CARE_FAILURE;
   }
@@ -417,6 +406,8 @@ care_status_t care_util_exec_routine(care_context_t *env,
   for (i = 0; i < routine.n_params; i++) {
     args[i] = care_dw_get_var_loc(env, routine.params[i]);
     if (args[i] == NULL) {
+      fprintf(stderr, "CARE: Failed to get location for %s.\n",
+              routine.params[i]);
       care_err_set_code(CARE_NO_LOC);
       return CARE_FAILURE;
     }
@@ -425,6 +416,15 @@ care_status_t care_util_exec_routine(care_context_t *env,
   // get function pointer
   symbol = care_tb_get_function_name_c(routine.funcTy);
   func = dlsym(env->rlib, symbol);
+  if (func == NULL) {
+    fprintf(
+        stderr,
+        "CARE: Failed to find the implementation for recovery kernel: %s.\n",
+        care_tb_get_function_name_c(routine.funcTy));
+    care_err_set_code(CARE_NO_KEN);
+    return CARE_FAILURE;
+  }
+  fprintf(stderr, "CARE: execute ffi_call.\n");
 
   ffi_call(&cif, func, rvalue, args);
 

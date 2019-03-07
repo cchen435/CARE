@@ -14,6 +14,8 @@
 #include "types.h"
 #include "util.h"
 
+Dwarf_Die care_dw_get_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC);
+
 // ---------------- declaration of helper functions ---------------- //
 /**
  * libdwarf_print_error: the helper function to print error msg for
@@ -159,7 +161,22 @@ static bool care_dw_contains_pc(care_dwarf_t dwarf, Dwarf_Die scope,
     if (class == DW_FORM_CLASS_CONSTANT) highpc += lowpc;
     if (lowpc <= PC && highpc >= PC) retval = true;
   } else if (has_range) {
+    Dwarf_Addr base, lowpc, highpc;
     Dwarf_Attribute attr;
+    Dwarf_Die subprogram;
+    Dwarf_Ranges *ranges;
+    Dwarf_Signed count;
+    Dwarf_Unsigned bytes, offset;
+
+    subprogram = care_dw_get_subprogram_die(dwarf, PC);
+    if (!subprogram) {
+      char buf[256];
+      sprintf(buf, "Failed to get subprograme DIE in care_dw_contains_pc.");
+      care_err_set_external_msg(buf);
+      return false;
+    }
+    dwarf_lowpc(subprogram, &base, &error);
+
     dwarf_attr(scope, DW_AT_ranges, &attr, &error);
 
 #if DEBUG_DWARF_RANGE
@@ -172,10 +189,6 @@ static bool care_dw_contains_pc(care_dwarf_t dwarf, Dwarf_Die scope,
            dwarf_get_form_class(version, attr, offset_size, form));
 #endif
 
-    Dwarf_Unsigned offset;
-    Dwarf_Ranges *ranges;
-    Dwarf_Signed count;
-    Dwarf_Unsigned bytes;
     dwarf_global_formref(attr, &offset, &error);
 
     retval =
@@ -195,10 +208,17 @@ static bool care_dw_contains_pc(care_dwarf_t dwarf, Dwarf_Die scope,
       printf("Ranges: type -- %d, addr1 -- %llx, addr -- %llx\n", cur->dwr_type,
              cur->dwr_addr1, cur->dwr_addr2);
 #endif
-      if (cur->dwr_type == DW_RANGES_END) break;
-      if (cur->dwr_addr1 <= PC && cur->dwr_addr2 >= PC) {
-        retval = true;
+      if (cur->dwr_type == DW_RANGES_END)
         break;
+      else if (cur->dwr_type == DW_RANGES_ADDRESS_SELECTION)
+        base = cur->dwr_addr2;
+      else if (cur->dwr_type == DW_RANGES_ENTRY) {
+        lowpc = base + cur->dwr_addr1;
+        highpc = base + cur->dwr_addr2;
+        if (lowpc <= PC && highpc >= PC) {
+          retval = true;
+          break;
+        }
       }
     }
     dwarf_ranges_dealloc(dbg, ranges, count);
@@ -529,7 +549,7 @@ static Dwarf_Die care_dw_get_cu_die_v2(care_dwarf_t dwarf, Dwarf_Addr PC) {
  *                             by PC, and the DIE for the CU of subprogram
  *
  */
-static Dwarf_Die care_dw_get_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
+Dwarf_Die care_dw_get_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
   Dwarf_Global *globals;
   Dwarf_Error error;
   Dwarf_Signed gcnt = -1;

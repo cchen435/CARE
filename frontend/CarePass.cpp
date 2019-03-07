@@ -5,6 +5,7 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileSystem.h>
 
+#include <experimental/filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -263,7 +264,7 @@ bool CarePass::runOnModule(Module &M) {
       care_tb_add_record(rtb, key, kernel, pnames);
 
       rktable += loc->getScope()->getFilename().str() +
-                 "\tLine: " + std::to_string(loc->getLine()) +
+                 "\t\tLine: " + std::to_string(loc->getLine()) +
                  "\tCol: " + std::to_string(loc->getColumn()) + "\t" +
                  kernel->getName().str() + "(";
       for (auto i = 0; i < pnames.size() - 1; i++)
@@ -289,10 +290,16 @@ bool CarePass::runOnModule(Module &M) {
   if (!hasDebugInfo) DbgInfoBuilder->finalize();
 
   // save CareM to .bc file
-  dbgs() << "Module ID: " << M.getModuleIdentifier();
-  dbgs() << "Module Name: " << M.getName();
+  dbgs() << "Module Name: " << M.getName() << "\n";
+#if 0
   std::string program = M.getName().ltrim("./").split('.').first.str();
   std::string FileName = "lib" + program + "_care.bc";
+#else
+  std::experimental::filesystem::path p =
+      M.getName().split('/').second.split('.').first.str();
+  std::string program = p.filename();
+  std::string FileName = "lib" + program + "_care.bc";
+#endif
   std::error_code EC;
 
   dbgs() << "Writing CareM module to " << FileName << "\n";

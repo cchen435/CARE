@@ -11,7 +11,11 @@ link_directories(
     ${CARE_SOURCE_DIR}/rtable
 )
 
-target_link_libraries(CAREPass rtable mhash)
+target_link_libraries(CAREPass rtable mhash stdc++fs)
+
+set_target_properties(CAREPass PROPERTIES
+    LINK_FLAGS "-lstdc++fs"
+)
 
 # Use C++11 to compile your pass (i.e., supply -std=c++11).
 target_compile_features(CAREPass PRIVATE cxx_range_for cxx_auto_type)
@@ -25,7 +29,7 @@ target_compile_features(CAREPass PRIVATE cxx_range_for cxx_auto_type)
 # Get proper shared-library behavior (where symbols are not necessarily
 # resolved when the shared library is linked) on OS X.
 if(APPLE)
-    set_target_properties(CARE PROPERTIES
+    set_target_properties(CAREPass PROPERTIES
         LINK_FLAGS "-undefined dynamic_lookup"
     )
 endif(APPLE)
