@@ -1,3 +1,4 @@
+tools/GDBFI/__pycache__
 build
 protobuf
 test/frontend/*.ll
