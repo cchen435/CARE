@@ -233,8 +233,11 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
 void care_util_finish(care_context_t *context) {
   char record[1024];
   sprintf(
-      record, "ID:%s; PC:0x%016lx; Insn: %s; Key: %s; Status: %s; Msg: %s\n",
+      record,
+      "ID:%s; PC:0x%016lx; Insn: %s; Key: %s; Mem: %016lx; Status: %s; Msg: "
+      "%s\n",
       context->log.inject, context->pc, context->insn, context->log.key,
+      context->log.memaddr,
       context->log.status == CARE_SUCCESS ? "Success" : "Failure",
       context->log.status == CARE_SUCCESS ? "Success" : care_err_get_errmsg());
   fputs(record, context->logfp);
@@ -242,6 +245,7 @@ void care_util_finish(care_context_t *context) {
   if (context->dwarf) care_dw_close(context->dwarf);
   if (context->rlib) dlclose(context->rlib);
   if (context->logfp) fclose(context->logfp);
+  signal(SIGSEGV, SIG_DFL);
 }
 
 /**

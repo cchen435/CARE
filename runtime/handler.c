@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include "errx.h"
 #include "types.h"
@@ -64,6 +65,7 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
       ctx.log.status = CARE_FAILURE;
       goto fexit;
     }
+    ctx.log.memaddr = rvalue;
 
     // update the target
     fprintf(stderr, "CARE: Update the target operand.\n");

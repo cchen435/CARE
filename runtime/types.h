@@ -27,6 +27,7 @@
 struct _log {
   char *inject;
   char *key;
+  uint64_t memaddr;
   care_status_t status;
 };
 typedef struct _log care_log_t;
