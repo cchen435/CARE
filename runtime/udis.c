@@ -79,16 +79,16 @@ char *care_ud_lookup_type_str(ud_type_t type) {
   char *str;
   switch (type) {
     case UD_OP_MEM:
-      str = "memory";
+      str = "Memory";
       break;
     case UD_OP_PTR:
-      str = "seg:off pointer operand";
+      str = "Seg:off pointer operand";
       break;
     case UD_OP_IMM:
       str = "Immediate Operand";
       break;
     case UD_OP_CONST:
-      str = "implicit constant";
+      str = "Implicit constant";
       break;
     case UD_OP_REG:
       str = "Register";

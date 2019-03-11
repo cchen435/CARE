@@ -12,7 +12,7 @@ import sys
 
 
 def add_parser():
-    Usage = 'usage: %prog -e name target.exe ...'
+    Usage = 'usage: %prog -e name -f faults.json [-n 4] target.exe ...'
     parser = OptionParser(usage=Usage)
     parser.add_option('-e', '--experiment', type='string',
                       dest='exprid', help='The experiment id/name')
@@ -25,10 +25,10 @@ def add_parser():
 
 def parse_arguments(args, opts):
     expr_path = opts['exprid']
-    assert(expr_path, "Specify an experiment name")
+    assert(expr_path), "Specify an experiment name"
 
     faults = opts['file']
-    assert(faults, "We expect a json file from pure injection experiments.\n")
+    assert(faults), "We expect a json file from pure injection experiments.\n"
     faults = Path(faults).absolute()
 
     num_workers = opts['num_workers']
@@ -46,6 +46,12 @@ def parse_arguments(args, opts):
         path = Path(arguments[i])
         if path.exists():
             arguments[i] = str(path.absolute())
+
+    print("Expr: ", expr_path)
+    print("Exec: ", executable)
+    print("Args: ", arguments)
+    print('Faluts: ', faults)
+    print("Num_workers: ", num_workers)
 
     return (executable, arguments, expr_path, faults, num_workers)
 

@@ -3,20 +3,21 @@
 from App import Application
 from Controller import GDBController
 from Disassembler import GDBFIInstruction
-from Fault import GDBFIFault
-from Framework import GDBFramework, PINFramework
+from Fault import FRFault
+
+from random import randint, uniform
+from pathlib2 import Path
+
 import logging
 import multiprocessing as mp
 import os
-from random import randint, uniform
-from pathlib2 import Path
 import shutil
 import sys
 import time
 
 
 class FIWorker(mp.Process):
-    def __init__(self, wid, expr_path, expr_exec, exec_args, workloads, framework, fault_model, log, queue):
+    def __init__(self, wid, expr_path, expr_exec, exec_args, workloads, log, queue):
         """
         Fault injection worker, it is to perform fault injections
         :param expr_path:
@@ -35,17 +36,8 @@ class FIWorker(mp.Process):
         self._expr_exec = expr_exec
         self._exec_args = exec_args
         self._workloads = workloads
-        self._fmodel = fault_model
         self._log = log
         self._queue = queue
-
-        if framework == 'gdb':
-            self._framework = GDBFramework(log)
-        elif framework == 'pintool':
-            self._framework = PINFramework(log)
-
-        profile_path = expr_path.joinpath('profile')
-        self._framework.load_profile(profile_path)
 
         super(FIWorker, self).__init__()
 
@@ -67,62 +59,119 @@ class FIWorker(mp.Process):
         self.log_msg('started successfully')
         self.log_msg("Workloads: %s" % str(self._workloads))
 
-        '''
         care_runtime_lib = Path(os.environ['CARE_ROOT']).joinpath(
             'build/runtime/libCARERuntime.so').absolute()
-
-        assert(care_runtime_lib.exists(),
-               "the recovery runtime library is not setup yet!")
+        assert(care_runtime_lib.exists()
+               ), "the recovery runtime library is not setup yet!"
 
         os.environ["CARE_EXPR_PATH"] = str(self._expr_path)
-        '''
+
+        # preload the recovery runtime library
+        os.environ["LD_PRELOAD"] = str(care_runtime_lib)
+        os.environ["CARE_WORKER_ID"] = str(self._id)
 
         for w in self._workloads:
-            name = 'inject-%04d' % w
-            print('Worker-%d (%d) -- perform job %s' %
-                  (self._id, self.pid, name))
-            self.log_msg('perform job %s' % name)
-            wd = self._expr_path.joinpath(name)
+            fid = w.id
+            fip = w.ip
+            fiter = w.iter
+            fbit = w.bit
 
-            '''
-            # preload the recovery runtime library
-            os.environ["LD_PRELOAD"] = str(care_runtime_lib)
-            os.environ["CARE_WORKER_ID"] = str(self._id)
-            os.environ["CARE_INJECTION_ID"] = str(name)
-            '''
+            os.environ["CARE_INJECTION_ID"] = str(fid)
+
+            print('\n\nWorker-%d (%d) -- perform job: ' %
+                  (self._id, self.pid), w)
+            self.log_msg('perform job %s' % str(w))
+            wd = self._expr_path.joinpath(fid)
 
             # create injection folder and making it the current working directory
             if wd.exists():
                 self.log_msg(
-                    '\t[%s]: directory exists, and data could be overwritten.' % name, logging.WARNING)
+                    '\t[%s]: directory exists, and data could be overwritten.' % fid, logging.WARNING)
             else:
                 wd.mkdir()
             os.chdir(wd)
 
-            # start the application and sleep for while, then pause the app
-            # retry if attach to process failed
-            # where (when) to inject the fault
-            (gdbsession, app, fault) = self._framework.start_and_inject(
-                self._expr_exec, self._exec_args, self._id, name)
+            gdbsession = GDBController(self._log, self._id, fid)
+            app = Application(self._expr_exec, self._exec_args)
 
-            (func, bytecode, status,
-             tracking) = self._framework.continue_and_track(gdbsession, app)
+            while True:
+                app.start()
+                status = gdbsession.attach(app.pid())
+                if status == 'error' or status == 'timeout':
+                    self.log_msg('\t[%s]: failed to attach to the target process (pid: %d). retry ...' % (
+                        fid, app.pid()))
+                    if app.is_alive:
+                        app.terminate()
+                    continue
 
-            self.log_msg('\t[%s]: done. Exit status: %s' % (name, status))
+                status = gdbsession.set_breakpoint(fip, fiter)
+                if status == 'error' or status == 'timeout':
+                    self.log_msg('\t[%s]: failed to set breakpoint at(PC: %s, iter: %d). retry ...' % (
+                        fid, fip, fiter))
+                    if app.is_alive:
+                        app.terminate()
+                    continue
+                else:
+                    bnumber = status
+
+                status = gdbsession.exec_continue()
+                if status == 'error' or status == 'timeout':
+                    self.log_msg(
+                        '\t[%s]: failed to continue the execution. retry ...' % fid)
+                    if app.is_alive:
+                        app.terminate()
+                    continue
+
+                break
+
+            code = gdbsession.get_code_as_bytes(address=int(fip, 16))
+            insn = GDBFIInstruction(code, int(fip, 16))
+
+            while not insn.is_injectable():
+                status = gdbsession.exec_nexti()
+                pc = gdbsession.get_curr_pc()
+                code = gdbsession.get_code_as_bytes(address=pc)
+                insn = GDBFIInstruction(code, pc)
+
+            assert(insn.is_valid()), 'meet an invalid instruction'
+
+            print("inject fault to instruction: ", insn.get_inst_string())
+
+            # get the location where the fault will be injected
+            loc = insn.get_inject_loc()
+            var = gdbsession.create_variable(loc)
+
+            gdbsession.exec_nexti()
+
+            print("inject fault to location: ", loc,
+                  "\t curr　pc: ", hex(gdbsession.get_curr_pc()))
+
+            # inject the fault by bitflipping
+            data = gdbsession.read_variable(var)
+            mask = 1 << fbit
+            fvalue = data ^ mask
+            print('Normal: ', data, '\tFaulty: ', fvalue)
+            gdbsession.write_variable(var, fvalue)
+
+            gdbsession.del_breakpoint(bnumber)
+            # gdbsession.exec_continue()
+            gdbsession.detach()
+
+            status = app.wait()
+
+            self.log_msg('\t[%s]: done. Exit status: %s' % (fid, status))
 
             record = dict()
-            record['id'] = name
-            record['fault'] = fault.get_fault_info()
+            record['id'] = fid
+            record['loc'] = loc
+            record['fault'] = str(w)
             record['status'] = status
-            record['crashed_func'] = func
-            record['crashed_insn_bytecode'] = bytecode
-            record['track'] = tracking
 
             while self._queue.full():
-                self.log_msg('\t[%s]: queue is full. waiting ...' % name)
+                self.log_msg('\t[%s]: queue is full. waiting ...' % fid)
                 time.sleep(10)
             # self.log_msg('\t[%s]: put record into the queue: %s' % (name, str(record)))
-            self.log_msg('\t[%s]: put record into the queue.' % (name))
+            self.log_msg('\t[%s]: put record into the queue.' % (fid))
             self._queue.put(record)
             os.chdir(self._expr_path)
 

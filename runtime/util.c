@@ -241,11 +241,13 @@ void care_util_finish(care_context_t *context) {
       context->log.status == CARE_SUCCESS ? "Success" : "Failure",
       context->log.status == CARE_SUCCESS ? "Success" : care_err_get_errmsg());
   fputs(record, context->logfp);
+  fflush(context->logfp);
+  fflush(stderr);
 
   if (context->dwarf) care_dw_close(context->dwarf);
   if (context->rlib) dlclose(context->rlib);
   if (context->logfp) fclose(context->logfp);
-  signal(SIGSEGV, SIG_DFL);
+  // signal(SIGSEGV, SIG_DFL);
 }
 
 /**
@@ -410,9 +412,11 @@ care_status_t care_util_exec_routine(care_context_t *env,
   for (i = 0; i < routine.n_params; i++) {
     args[i] = care_dw_get_var_loc(env, routine.params[i]);
     if (args[i] == NULL) {
-      fprintf(stderr, "CARE: Failed to get location for %s.\n",
-              routine.params[i]);
+      char msg[128];
+      sprintf(msg, "CARE: Failed to get location for %s.\n", routine.params[i]);
+      fprintf(stderr, msg);
       care_err_set_code(CARE_NO_LOC);
+      care_err_set_external_msg(msg);
       return CARE_FAILURE;
     }
   }

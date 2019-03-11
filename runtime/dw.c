@@ -1015,7 +1015,7 @@ static Dwarf_Die care_dw_get_local_var_die(care_dwarf_t dwarf, Dwarf_Addr PC,
   struct scope *it = scopes;
   int count = 0;
   while (it) {
-    printf("Scope %d: \n", count++);
+    fprintf(stderr, "Scope %d: \n", count++);
     care_dw_print_die(dwarf, it->die, 2);
     printf("\n\n");
     it = it->next;
