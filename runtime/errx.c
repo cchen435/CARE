@@ -6,18 +6,20 @@
 static care_error_t care_error_code = 0;
 static char* care_error_external_msg = NULL;
 
-static char* errmsg[] = {"Invalid Error Code.",
-                         "Failed to get environment variables.",
-                         "Failed to open file for accessing dwarf objects.",
-                         "Failed to open recovery table.",
-                         "Failed to load recovery library.",
-                         "Failed to find a valid operand.",
-                         "Failed to find a recovery kernel.",
-                         "Failed to init a FFI object.",
-                         "Failed to find the compile unit.",
-                         "Failed to get the debug info for key.",
-                         "Failed to find the locdesc for a variable.",
-                         "Unsupported Instruction."};
+static char* errmsg[] = {
+    "Invalid Error Code.",
+    "Failed to get environment variables.",
+    "Failed to open file for accessing dwarf objects.",
+    "Failed to open recovery table.",
+    "Failed to load recovery library.",
+    "Failed to find a valid operand.",
+    "Failed to find a recovery kernel.",
+    "Failed to init a FFI object.",
+    "Failed to find the compile unit.",
+    "Failed to get the debug info for key.",
+    "Failed to find the locdesc for a variable.",
+    "Failed to recover (repeating on the same instruction)",
+    "Unsupported Instruction."};
 
 void care_err_set_code(care_error_t err) {
   if (care_error_code == 0) care_error_code = err;
