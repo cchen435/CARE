@@ -139,9 +139,10 @@ class FIWorker(mp.Process):
 
             # get the location where the fault will be injected
             loc = insn.get_inject_loc()
-            var = gdbsession.create_variable(loc)
 
             gdbsession.exec_nexti()
+
+            var = gdbsession.create_variable(loc)
 
             print("inject fault to location: ", loc,
                   "\t curr　pc: ", hex(gdbsession.get_curr_pc()))

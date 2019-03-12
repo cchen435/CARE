@@ -25,7 +25,6 @@ class GDBFIFault(object):
         self._lib = gdbsession.get_shared_libraries()
         self._func = gdbsession.get_parent_func()
         self._loc = insn.get_inject_loc()
-        self._var = gdbsession.create_variable(self._loc)
 
         self._bit = None
         self._normal = None
@@ -40,16 +39,17 @@ class GDBFIFault(object):
 
     def inject(self):
         """ Perform the injection """
-        width = self._var['width']
+        var = gdbsession.create_variable(self._loc)
+        width = var['width']
 
-        self._normal = self._session.read_variable(self._var)
+        self._normal = self._session.read_variable(var)
 
         if self._fmode == 'bitflip':
             self._bit, self._faulty = self.bitflip(self._normal, width)
         else:
             return "Error: fault mode (%s) not supported." % self._fmode
         # print("\tfault: ", self.get_fault_info())
-        self._session.write_variable(self._var, self._faulty)
+        self._session.write_variable(var, self._faulty)
 
     def get_fault_info(self):
         """ get the fault configuration for log purpose """

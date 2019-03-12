@@ -357,6 +357,7 @@ class GDBController(object):
             reg = location['location']['base']
 
             # create a variable object for the register
+            print('create variable for register: %s' % reg)
             cmd = '-var-create - * $%s' % reg
             retval = self._execute_cmd(cmd)
             status = retval[0]
