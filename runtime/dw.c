@@ -692,13 +692,19 @@ static care_status_t care_dw_get_locdesc(care_context_t *env, Dwarf_Die die,
                                        &expr_offset, &locdesc_offset, &error);
 
     if (retval != DW_DLV_OK) continue;
-    if (source != 1) {
+    if (source == 2) {
       char buf[512];
       sprintf(buf,
               "Unsupported location description: %d (0: loc expr, 1: DWARF "
-              "2,3,4 Form, 2: DWARF 5 Form).",
+              "2,3,4 loclist Form, 2: DWARF 5 Form).",
               source);
       care_err_set_external_msg(buf);
+      break;
+    }
+
+    if (source == 0) {
+      // a location expression, lle, lopc and hipc is not interesting
+      found = DW_DLV_OK;
       break;
     }
 
@@ -1142,7 +1148,7 @@ void *care_dw_get_var_loc(care_context_t *env, char *varname) {
     care_err_set_code(CARE_NO_LOC);
     return NULL;
   }
-#ifdef DEBUG_DW_LOCLIST
+#ifdef DEBUG
   fprintf(stderr, "The Die for %s: \n", varname);
   care_dw_print_die(env->dwarf, var_die, 0);
 #endif

@@ -39,7 +39,7 @@ class GDBFIFault(object):
 
     def inject(self):
         """ Perform the injection """
-        var = gdbsession.create_variable(self._loc)
+        var = self._session.create_variable(self._loc)
         width = var['width']
 
         self._normal = self._session.read_variable(var)

@@ -145,13 +145,15 @@ class FIWorker(mp.Process):
             var = gdbsession.create_variable(loc)
 
             print("inject fault to location: ", loc,
-                  "\t curr　pc: ", hex(gdbsession.get_curr_pc()))
+                  "\t curr　pc: ", gdbsession.get_curr_pc())
 
             # inject the fault by bitflipping
             data = gdbsession.read_variable(var)
             mask = 1 << fbit
             fvalue = data ^ mask
+
             print('Normal: ', data, '\tFaulty: ', fvalue)
+
             gdbsession.write_variable(var, fvalue)
 
             gdbsession.del_breakpoint(bnumber)

@@ -49,6 +49,9 @@ struct CarePass : public ModulePass {
 
  private:
   void initialize(Module &M);
+  bool isMath(CallInst *CI);
+  bool isLoadFromAlloca(Value *V);
+  bool isStoreToAlloca(Value *V);
 
   bool isMemAccInst(Instruction *Insn);
   Value *getPointerOperand(Instruction *Insn);

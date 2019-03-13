@@ -201,6 +201,7 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
 
   if (context->pc == prev_pc) {
     care_err_set_code(CARE_REPEATED);
+    return CARE_FAILURE;
   }
   prev_pc = context->pc;
 

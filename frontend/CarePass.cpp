@@ -17,11 +17,48 @@
 
 using namespace llvm;
 
+bool CarePass::isLoadFromAlloca(Value *V) {
+  auto LI = dyn_cast<LoadInst>(V);
+  if (!LI) return false;
+  auto addr = LI->getPointerOperand();
+  if (isa<AllocaInst>(addr)) return true;
+  return false;
+}
+
+bool CarePass::isStoreToAlloca(Value *V) {
+  auto SI = dyn_cast<StoreInst>(V);
+  if (!SI) return false;
+  auto addr = SI->getPointerOperand();
+  if (isa<AllocaInst>(addr)) return true;
+  return false;
+}
+
 bool CarePass::isMemAccInst(Instruction *Insn) {
   if (!isa<StoreInst>(Insn) && !isa<LoadInst>(Insn)) return false;
   auto Addr = getPointerOperand(Insn);
   if (!isa<GetElementPtrInst>(Addr)) return false;
   return true;
+}
+
+bool CarePass::isMath(CallInst *CI) {
+  auto Callee = CI->getCalledFunction();
+  if (!Callee) {
+    dbgs() << "Callee is not a function\n";
+    return false;
+  }
+  auto func = Callee->getName();
+
+  // GTC-P math kernels
+  if (func == "abs_min_int" || func == "abs_min_real") return true;
+
+  if (func == "acos" || func == "asin" || func == "atan" || func == "atan2" ||
+      func == "cos" || func == "cosh" || func == "sin" || func == "sinh" ||
+      func == "tanh" || func == "exp" || func == "frexp" || func == "ldexp" ||
+      func == "log" || func == "log10" || func == "modf" || func == "pow" ||
+      func == "sqrt" || func == "ceil" || func == "fabs" || func == "floor" ||
+      func == "fmod")
+    return true;
+  return false;
 }
 
 Value *CarePass::getPointerOperand(Instruction *Insn) {
@@ -55,6 +92,8 @@ void CarePass::initialize(Module &M) {
 
 std::string CarePass::getOrCreateValueName(Value *V) {
   std::string name;
+  if (isLoadFromAlloca(V)) V = dyn_cast<LoadInst>(V)->getPointerOperand();
+  if (isStoreToAlloca(V)) V = dyn_cast<StoreInst>(V)->getPointerOperand();
   if (DbgValueMap.find(V) != DbgValueMap.end()) {
     auto DbgInst = DbgValueMap[V];
     DILocalVariable *Var;
@@ -154,7 +193,7 @@ DebugLoc CarePass::getNearbyDebugLoc(Instruction *Insn) {
   DebugLoc Prev, Next;
   Instruction *P = Insn;
   while (P = P->getPrevNode()) {
-    dbgs() << "Prev: " << *P << "\n";
+    // dbgs() << "Prev: " << *P << "\n";
     if (isMemAccInst(P)) break;
     Prev = P->getDebugLoc();
     if (Prev) break;
@@ -162,23 +201,23 @@ DebugLoc CarePass::getNearbyDebugLoc(Instruction *Insn) {
 
   Instruction *N = Insn;
   while (N = N->getNextNode()) {
-    dbgs() << "Next: " << *N << "\n";
+    // dbgs() << "Next: " << *N << "\n";
     if (isMemAccInst(N)) break;
     Next = N->getDebugLoc();
     if (Next) break;
   }
 
   if (Prev && Next) {
-    dbgs() << "Prev DebugLoc: " << *Prev << "\n";
-    dbgs() << "Next DebugLoc: " << *Next << "\n";
+    // dbgs() << "Prev DebugLoc: " << *Prev << "\n";
+    // dbgs() << "Next DebugLoc: " << *Next << "\n";
     int line = (Prev->getLine() + Next->getLine()) / 2;
     int col = (Prev->getColumn() + Next->getColumn()) / 2;
     return DebugLoc::get(line, col, Prev->getScope());
   } else if (Prev) {
-    dbgs() << "Prev DebugLoc: " << *Prev << "\n";
+    // dbgs() << "Prev DebugLoc: " << *Prev << "\n";
     return Prev;
   } else if (Next) {
-    dbgs() << "Next DebugLoc: " << *Next << "\n";
+    // dbgs() << "Next DebugLoc: " << *Next << "\n";
     return Next;
   }
   return nullptr;
@@ -196,6 +235,8 @@ bool CarePass::runOnModule(Module &M) {
     Function &F = *it;
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
+
+    if (F.getName() != "chargei") continue;
 
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
@@ -330,8 +371,8 @@ std::pair<Function *, std::set<Value *>> CarePass::buildRecoveryKernel(
     Instruction *Insn) {
   std::vector<Value *> Stmts;
   std::set<Value *> Params;
-  DEBUG_WITH_TYPE("RK", dbgs()
-                            << "Build recovery kernel for: " << *Insn << "\n");
+  DEBUG_WITH_TYPE(
+      "RK", dbgs() << "\n\n\nBuild recovery kernel for: " << *Insn << "\n");
 
   Type *RetTy = getParamsAndStmts(Insn, Params, Stmts);
   Function *RK = createFunction(RetTy, Params, Stmts);
@@ -353,8 +394,22 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
     Workspace.pop_back();
 
     if (isa<Argument>(V) || isa<PHINode>(V) || isa<GlobalValue>(V) ||
-        isa<CallInst>(V) || isa<AllocaInst>(V)) {
+        isa<AllocaInst>(V)) {
       Params.insert(V);
+    } else if (isLoadFromAlloca(V) || isStoreToAlloca(V)) {
+      Params.insert(V);
+    } else if (auto CI = dyn_cast<CallInst>(V)) {
+      if (!isMath(CI)) {
+        Params.insert(V);
+      }
+      Stmts.push_back(V);
+
+      for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
+        Value *Op = CI->getArgOperand(i);
+        if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) continue;
+        dbgs() << "Put " << *Op << "into stmts.\n";
+        Workspace.insert(Workspace.begin(), Op);
+      }
     } else if (auto I = dyn_cast<Instruction>(V)) {
       Stmts.push_back(V);
       DEBUG_WITH_TYPE("Inst", dbgs() << "\n\nWorking on: " << *V);
@@ -393,7 +448,7 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
 Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
                                    std::vector<Value *> Stmts) {
   DEBUG_WITH_TYPE("RK", {
-    dbgs() << "\n\n\n\nCreate Recovery Kernel Function.\n    Params: ";
+    dbgs() << "Create Recovery Kernel Function.\n    Params: ";
     int i = 0;
     for (auto it = Params.begin(); it != Params.end(); it++) {
       dbgs() << "\n\tParam[" << i++ << "]: " << **it;
@@ -436,7 +491,7 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
     // avoid duplications, since vector is used when retrieving
     // computing instructions
     if (VMap.find(V) != VMap.end()) continue;
-    DEBUG_WITH_TYPE("info", dbgs() << "Working on inst :" << *V << "\n");
+    DEBUG_WITH_TYPE("RK", dbgs() << "Working on inst :" << *V << "\n");
 
     auto Insn = dyn_cast<Instruction>(V);
     if (!Insn) {
@@ -450,22 +505,36 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
     // get the operands for the instruction. For every
     // instruction, its operands should be created firstly.
     // if not, it means something is wrong
-    DEBUG_WITH_TYPE("iRK", dbgs() << "Preparing Operands:\n");
-    for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
-      Value *Op = Insn->getOperand(i);
-      if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) {
-        Operands.push_back(Op);
-      } else if (VMap.find(Op) != VMap.end()) {
-        Operands.push_back(VMap[Op]);
-      } else {
-        dbgs() << "Unprocessed Op: " << *Op << "\n\tInstruction: " << *Insn
-               << "\n";
-        llvm_unreachable("The operand has not been processed");
+    DEBUG_WITH_TYPE("RK", dbgs() << "Preparing Operands:\n");
+    if (auto CI = dyn_cast<CallInst>(Insn)) {
+      for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
+        Value *Op = CI->getArgOperand(i);
+        if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) {
+          Operands.push_back(Op);
+        } else if (VMap.find(Op) != VMap.end()) {
+          Operands.push_back(VMap[Op]);
+        } else {
+          dbgs() << "Unprocessed Op: " << *Op << "\n\tInstruction: " << *Insn
+                 << "\n";
+          llvm_unreachable("The operand has not been processed");
+        }
       }
-    }
+    } else
+      for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
+        Value *Op = Insn->getOperand(i);
+        if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) {
+          Operands.push_back(Op);
+        } else if (VMap.find(Op) != VMap.end()) {
+          Operands.push_back(VMap[Op]);
+        } else {
+          dbgs() << "Unprocessed Op: " << *Op << "\n\tInstruction: " << *Insn
+                 << "\n";
+          llvm_unreachable("The operand has not been processed");
+        }
+      }
 
     // create the instruction
-    DEBUG_WITH_TYPE("RK", dbgs() << "Create/Copy Inst:\n");
+    DEBUG_WITH_TYPE("RK", dbgs() << "Create/Copy Inst: " << *Insn << "\n");
 
     Value *Inst = createInstruction(IRB, Insn, Operands);
 
@@ -507,7 +576,7 @@ FunctionType *CarePass::getFunctionType(std::set<Value *> Params) {
 Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
                                    std::vector<Value *> Operands) {
   Value *Inst;
-  Value *Callee;
+  Function *Callee;
   switch (Insn->getOpcode()) {
     case Instruction::Add:
       Inst = IRB.CreateAdd(Operands[0], Operands[1]);
@@ -597,17 +666,21 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
                               dyn_cast<FPToUIInst>(Insn)->getDestTy());
       break;
     case Instruction::Call:
-      Callee = Operands.back();
-      Operands.pop_back();
-      Inst = IRB.CreateCall(Callee, Operands, Insn->getName());
+      Callee = dyn_cast<CallInst>(Insn)->getCalledFunction();
+      Inst = IRB.CreateCall(CareM->getOrInsertFunction(
+                                Callee->getName(), Callee->getFunctionType()),
+                            Operands, Insn->getName());
       break;
-
     default:
       dbgs() << "Unsupported Instruction: " << *Insn << "\n";
       for (unsigned i = 0; i < Operands.size(); i++) {
         dbgs() << "\n\tOperand[" << i << "]: " << *Operands[i];
       }
-      dbgs() << "\n  Operands of Original Instruction: " << *Insn << "\n";
+      auto Callee = Operands.back();
+      dbgs() << "\n\tCallee:" << Callee->getName()
+             << ", FuncTy: " << dyn_cast<Function>(Callee) << "\n";
+
+      dbgs() << "\n\tOperands of Original Instruction: " << *Insn << "\n";
 
       for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
         dbgs() << "\n\tOperand[" << i << "]: " << *Insn->getOperand(i);

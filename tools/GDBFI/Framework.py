@@ -199,6 +199,7 @@ class PINFramework(Framework):
         assert profile.exists(), "Profile file %s not found" % profile.name
         data = pd.read_csv(profile, sep=';')
         data = data.loc[data['Candidate'] == 1]
+        data = data.loc[data['MemWrite'] == 0]
         total = data['executions'].sum()
         self._distr = data['executions'].tolist()/total
         self._execs = data['executions'].tolist()

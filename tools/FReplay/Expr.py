@@ -31,7 +31,8 @@ def json_parser(ffile, filter='SIGSEGV'):
             iter = record['fault']['dyn_inst'][1]
             bit = record['fault']['bit_flipped']
             latency = len(record['track'])
-
+            if latency > 400:
+                continue
             result.append(FRFault(id, ip, iter, bit, latency))
     result.sort()
     return result
@@ -167,7 +168,8 @@ class FRExpr(object):
                 # dumping the faults info and update the remaining workloads
 
                 finished = self.json_dump(queue, tmps[i], i)
-                print("finished jobs for %d: " % i, finished)
+
+                # print("finished jobs for %d: " % i, finished)
                 [jobs[i].remove(j) for j in finished if j in jobs[i]]
                 # [jobs[i].remove(j) for j in finished]
 
