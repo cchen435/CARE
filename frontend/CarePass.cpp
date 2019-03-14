@@ -81,9 +81,10 @@ void CarePass::initialize(Module &M) {
   // if the module has no debug data (by checking whether the
   // module dwarf version information), a DIBuilder will be created.
   hasDebugInfo = M.getDwarfVersion() ? true : false;
-  if (hasDebugInfo)
+  if (hasDebugInfo) {
+    resolveConflictDbgInfo(M);
     getDbgInfo(M);
-  else
+  } else
     DbgInfoBuilder = new CAREDIBuilder(M);
   CareM = new Module("Care", M.getContext());
   CareM->setTargetTriple(M.getTargetTriple());
@@ -144,6 +145,41 @@ std::string CarePass::getKey(DebugLoc loc) {
   });
 
   return result;
+}
+
+void CarePass::resolveConflictDbgInfo(Module &M) {
+  std::map<DebugLoc, std::vector<Instruction *>> DbgLocMap;
+  Module::FunctionListType &funcs = M.getFunctionList();
+  for (Module::FunctionListType::iterator it = funcs.begin(), end = funcs.end();
+       it != end; it++) {
+    Function &F = *it;
+    if (F.isDeclaration() || F.isIntrinsic()) continue;
+    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
+      Instruction *Insn = &*I;
+      if (!isMemAccInst(Insn)) continue;
+      DebugLoc DbgLoc = Insn->getDebugLoc();
+      if (!DbgLoc) continue;
+      if (DbgLocMap.find(DbgLoc) == DbgLocMap.end())
+        DbgLocMap[DbgLoc] = std::vector<Instruction *>();
+      DbgLocMap[DbgLoc].push_back(Insn);
+    }
+  }
+
+  for (auto mit = DbgLocMap.begin(); mit != DbgLocMap.end(); mit++) {
+    if (mit->second.size() == 1) continue;
+    dbgs() << "DbgLoc: " << *(mit->first) << "(line: " << mit->first->getLine()
+           << ", Col:" << mit->first->getColumn() << ")\n";
+    for (int i = 1; i < mit->second.size(); i++) {
+      dbgs() << "\t" << *(mit->second[i]) << "\n";
+      unsigned line = mit->first->getLine();
+      unsigned col = mit->first->getColumn() + i;
+      DebugLoc loc = DebugLoc::get(line, col, mit->first->getScope(),
+                                   mit->first->getInlinedAt());
+
+      mit->second[i]->setDebugLoc(loc);
+    }
+    // dbgs() << "\n";
+  }
 }
 
 void CarePass::getDbgInfo(Module &M) {

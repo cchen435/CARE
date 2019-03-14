@@ -57,6 +57,7 @@ struct CarePass : public ModulePass {
   Value *getPointerOperand(Instruction *Insn);
   DebugLoc getNearbyDebugLoc(Instruction *Insn);
 
+  void resolveConflictDbgInfo(Module &M);
   /**
    * when the program is compiled with -g flag this method is
    * called to setup the VMMap
