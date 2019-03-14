@@ -236,7 +236,7 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    if (F.getName() != "chargei") continue;
+    // if (F.getName() != "chargei") continue;
 
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
