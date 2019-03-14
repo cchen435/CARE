@@ -67,12 +67,13 @@ class FIWorker(mp.Process):
         self.log_msg('started successfully')
         self.log_msg("Workloads: %s" % str(self._workloads))
 
+        '''
         care_runtime_lib = Path(os.environ['CARE_ROOT']).joinpath(
             'build/runtime/libCARERuntime.so').absolute()
         os.environ["LD_PRELOAD"] = str(care_runtime_lib)
 
-        assert(care_runtime_lib.exists(),
-               "the recovery runtime library is not setup yet!")
+        assert care_runtime_lib.exists() , "the recovery runtime library is not setup yet!"
+        '''
 
         os.environ["CARE_EXPR_PATH"] = str(self._expr_path)
 
@@ -83,9 +84,11 @@ class FIWorker(mp.Process):
             self.log_msg('perform job %s' % name)
             wd = self._expr_path.joinpath(name)
 
+            '''
             # preload the recovery runtime library
             os.environ["CARE_WORKER_ID"] = str(self._id)
             os.environ["CARE_INJECTION_ID"] = str(name)
+            '''
 
             # create injection folder and making it the current working directory
             if wd.exists():
