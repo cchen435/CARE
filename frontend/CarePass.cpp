@@ -46,12 +46,19 @@ bool CarePass::isMemAccInst(Instruction *Insn) {
 
 bool CarePass::isCallingSimpleKernel(CallInst *CI) {
   if (isMath(CI)) return true;
-  if (CI->getCalledFunction()) {
-    Function &F = *(CI->getCalledFunction());
-    auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-    if (LI.empty()) return true;
+  auto Callee = CI->getCalledFunction();
+  if (!Callee) return false;
+  if (Callee->isDeclaration()) return true;
+  Function &F = *(Callee);
+  auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+  if (!LI.empty()) return false;
+
+  for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
+    auto CI = dyn_cast<CallInst>(&*I);
+    if (!CI)) continue;
+    if (!isCallingSimpleKernel(CI)) return false;
   }
-  return false;
+  return true;
 }
 
 bool CarePass::isMath(CallInst *CI) {
