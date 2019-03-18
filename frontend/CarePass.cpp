@@ -55,7 +55,7 @@ bool CarePass::isCallingSimpleKernel(CallInst *CI) {
 
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
     auto CI = dyn_cast<CallInst>(&*I);
-    if (!CI)) continue;
+    if (!CI) continue;
     if (!isCallingSimpleKernel(CI)) return false;
   }
   return true;
