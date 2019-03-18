@@ -119,8 +119,7 @@ std::string CarePass::getOrCreateValueName(Value *V) {
 }
 
 std::string CarePass::getFilename(StringRef filename) {
-  std::experimental::filesystem::path p =
-      filename.split('/').second.split('.').first.str();
+  std::experimental::filesystem::path p = filename.str();
   std::string str = p.filename();
   return str;
 }
