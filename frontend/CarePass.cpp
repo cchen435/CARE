@@ -457,8 +457,7 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
       }
       DEBUG_WITH_TYPE("Inst", dbgs() << "\n");
     } else {
-      DEBUG_WITH_TYPE("debug",
-                      dbgs() << "Meet an Unknown Value: " << *V << ": \n");
+      dbgs() << "Meet an Unknown Value: " << *V << ": \n";
       llvm_unreachable("Unconsidered Value");
     }
   }
@@ -706,6 +705,9 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
       Inst = IRB.CreateCall(CareM->getOrInsertFunction(
                                 Callee->getName(), Callee->getFunctionType()),
                             Operands, Insn->getName());
+      break;
+    case Instruction::PtrToInt:
+      Inst = IRB.CreatePtrToInt(Operands[0], dyn_cast<PtrToIntInst>(Insn)->getDestTy());
       break;
     default:
       dbgs() << "Unsupported Instruction: " << *Insn << "\n";
