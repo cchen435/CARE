@@ -176,7 +176,8 @@ void CarePass::resolveConflictDbgInfo(Module &M) {
     if (F.isDeclaration() || F.isIntrinsic()) continue;
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
       Instruction *Insn = &*I;
-      if (!isMemAccInst(Insn)) continue;
+      if (!isa<LoadInst>(Insn) && !isa<StoreInst>(Insn)) continue;
+      // if (!isMemAccInst(Insn)) continue;
       DebugLoc DbgLoc = Insn->getDebugLoc();
       if (!DbgLoc) continue;
       if (DbgLocMap.find(DbgLoc) == DbgLocMap.end())
