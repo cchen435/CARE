@@ -118,6 +118,13 @@ std::string CarePass::getOrCreateValueName(Value *V) {
   return name;
 }
 
+std::string CarePass::getFilename(StringRef filename) {
+  std::experimental::filesystem::path p =
+      filename.split('/').second.split('.').first.str();
+  std::string str = p.filename();
+  return str;
+}
+
 std::string CarePass::getKey(DebugLoc loc) {
   MHASH mhd = mhash_init(MHASH_MD5);
   assert(mhd != MHASH_FAILED);
@@ -125,7 +132,7 @@ std::string CarePass::getKey(DebugLoc loc) {
   int lineno = loc.getLine();
   int colno = loc.getCol();
   auto scope = dyn_cast<DIScope>(loc.getScope());
-  std::string str = scope->getFilename();
+  std::string str = getFilename(scope->getFilename());
   str += "/" + std::to_string(lineno) + "/" + std::to_string(colno);
 
   unsigned char buf[16];
@@ -137,7 +144,7 @@ std::string CarePass::getKey(DebugLoc loc) {
   std::string result(key);
 
   DEBUG_WITH_TYPE("RTB", {
-    dbgs() << "getKey for File: " << scope->getFilename()
+    dbgs() << "getKey for File: " << getFilename(scope->getFilename())
            << ", Line: " << lineno << ", Col: " << colno
            << "\n\tMD5 CStr: " << result << "\n\tMD5 Char: ";
     for (int i = 0; i < 32; i++) fprintf(stdout, "%c", key[i]);
@@ -340,7 +347,7 @@ bool CarePass::runOnModule(Module &M) {
       });
       care_tb_add_record(rtb, key, kernel, pnames);
 
-      rktable += loc->getScope()->getFilename().str() +
+      rktable += getFilename(loc->getScope()->getFilename()) +
                  "\t\tLine: " + std::to_string(loc->getLine()) +
                  "\tCol: " + std::to_string(loc->getColumn()) + "\t" +
                  kernel->getName().str() + "(";
@@ -707,7 +714,8 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
                             Operands, Insn->getName());
       break;
     case Instruction::PtrToInt:
-      Inst = IRB.CreatePtrToInt(Operands[0], dyn_cast<PtrToIntInst>(Insn)->getDestTy());
+      Inst = IRB.CreatePtrToInt(Operands[0],
+                                dyn_cast<PtrToIntInst>(Insn)->getDestTy());
       break;
     default:
       dbgs() << "Unsupported Instruction: " << *Insn << "\n";

@@ -95,6 +95,7 @@ struct CarePass : public ModulePass {
   };
 
   std::string getOrCreateValueName(Value *V);
+  std::string getFilename(StringRef filename);
   std::string getKey(DebugLoc Loc);
 
   /**
