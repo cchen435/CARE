@@ -379,8 +379,10 @@ bool CarePass::runOnModule(Module &M) {
       // promote the debug data to all of its binary users
       // since in x86 architecture, the binary operation could
       // be merged with a memort access instruction
-      for (auto U : I->users())
+      for (auto U : I->users()) {
         if (auto Insn = dyn_cast<BinaryOperator>(U)) Insn->setDebugLoc(loc);
+        if (auto Insn = dyn_cast<CastInst>(U)) Insn->setDebugLoc(loc);
+      }
     }
 
     // Create DILocalVariable for referenced values
