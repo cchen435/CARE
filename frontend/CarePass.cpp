@@ -1,3 +1,4 @@
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/InstIterator.h>
@@ -36,8 +37,21 @@ bool CarePass::isStoreToAlloca(Value *V) {
 bool CarePass::isMemAccInst(Instruction *Insn) {
   if (!isa<StoreInst>(Insn) && !isa<LoadInst>(Insn)) return false;
   auto Addr = getPointerOperand(Insn);
-  if (!isa<GetElementPtrInst>(Addr)) return false;
+  if (isa<CallInst>(Addr) && isCallingSimpleKernel(dyn_cast<CallInst>(Addr)))
+    return true;
+  else if (!isa<GetElementPtrInst>(Addr))
+    return false;
   return true;
+}
+
+bool CarePass::isCallingSimpleKernel(CallInst *CI) {
+  if (isMath(CI)) return true;
+  if (CI->getCalledFunction()) {
+    Function &F = *(CI->getCalledFunction());
+    auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+    if (LI.empty()) return true;
+  }
+  return false;
 }
 
 bool CarePass::isMath(CallInst *CI) {
@@ -441,16 +455,17 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
     } else if (isLoadFromAlloca(V) || isStoreToAlloca(V)) {
       Params.insert(V);
     } else if (auto CI = dyn_cast<CallInst>(V)) {
-      if (!isMath(CI)) {
+      if (!isCallingSimpleKernel(CI)) {
         Params.insert(V);
-      }
-      Stmts.push_back(V);
+      } else {
+        Stmts.push_back(V);
 
-      for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
-        Value *Op = CI->getArgOperand(i);
-        if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) continue;
-        dbgs() << "Put " << *Op << "into stmts.\n";
-        Workspace.insert(Workspace.begin(), Op);
+        for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
+          Value *Op = CI->getArgOperand(i);
+          if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) continue;
+          dbgs() << "Put " << *Op << "into stmts.\n";
+          Workspace.insert(Workspace.begin(), Op);
+        }
       }
     } else if (auto I = dyn_cast<Instruction>(V)) {
       Stmts.push_back(V);

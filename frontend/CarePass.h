@@ -1,6 +1,7 @@
 #ifndef _CARE_PASS_H_
 #define _CARE_PASS_H_
 
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -24,6 +25,14 @@ struct CarePass : public ModulePass {
     // if (CareM) delete CareM;
   }
   virtual bool runOnModule(Module &M);
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesAll();
+    AU.addRequired<LoopInfoWrapperPass>();
+    // AU.addRequired<DominatorTreeWrapperPass>();
+    // AU.addRequired<TargetLibraryInfoWrapperPass>();
+    // AU.addRequired<AssumptionCacheTracker>();
+  }
 
  private:
   Module *CareM;  // the module for recovery routines
@@ -49,6 +58,7 @@ struct CarePass : public ModulePass {
 
  private:
   void initialize(Module &M);
+  bool isCallingSimpleKernel(CallInst *CI);
   bool isMath(CallInst *CI);
   bool isLoadFromAlloca(Value *V);
   bool isStoreToAlloca(Value *V);
