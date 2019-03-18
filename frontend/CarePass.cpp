@@ -36,6 +36,7 @@ bool CarePass::isStoreToAlloca(Value *V) {
 bool CarePass::isMemAccInst(Instruction *Insn) {
   if (!isa<StoreInst>(Insn) && !isa<LoadInst>(Insn)) return false;
   auto Addr = getPointerOperand(Insn);
+  if (isa<CallInst>(Addr)) return true;
   if (!isa<GetElementPtrInst>(Addr)) return false;
   return true;
 }
@@ -119,8 +120,9 @@ std::string CarePass::getOrCreateValueName(Value *V) {
 }
 
 std::string CarePass::getFilename(StringRef filename) {
-  std::experimental::filesystem::path p =
-      filename.split('/').second.split('.').first.str();
+  //std::experimental::filesystem::path p =
+  //    filename.split('/').second.split('.').first.str();
+  std::experimental::filesystem::path p = filename.str();
   std::string str = p.filename();
   return str;
 }
