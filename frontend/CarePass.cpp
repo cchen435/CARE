@@ -720,6 +720,9 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
     case Instruction::Select:
       Inst = IRB.CreateSelect(Operands[0], Operands[1], Operands[2]);
       break;
+    case Instruction::SRem:
+      Inst = IRB.CreateSRem(Operands[0], Operands[1]);
+      break;
     case Instruction::ExtractValue:
       Inst = IRB.CreateExtractValue(
           Operands[0], dyn_cast<ExtractValueInst>(Insn)->getIndices(),
