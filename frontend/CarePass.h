@@ -60,6 +60,7 @@ struct CarePass : public ModulePass {
   void initialize(Module &M);
   bool isCallingSimpleKernel(CallInst *CI);
   bool isMath(CallInst *CI);
+  bool isMemAlloc(CallInst *CI);
   bool isLoadFromAlloca(Value *V);
   bool isStoreToAlloca(Value *V);
 

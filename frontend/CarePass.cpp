@@ -18,7 +18,6 @@
 
 using namespace llvm;
 
-
 bool CarePass::isLoadFromAlloca(Value *V) {
   auto LI = dyn_cast<LoadInst>(V);
   if (!LI) return false;
@@ -46,13 +45,14 @@ bool CarePass::isMemAccInst(Instruction *Insn) {
   return true;
 }
 
-bool isMemAlloc(CallInst *CI) {
-    auto Callee = CI->getCalledFunction();
-    if (!Callee) return false;
-    auto fname = Callee->getName();
-    if (fname == "_Znwm" || fname == "malloc" || fname == "_mm_malloc" || fname=="alloc") return true;
+bool CarePass::isMemAlloc(CallInst *CI) {
+  auto Callee = CI->getCalledFunction();
+  if (!Callee) return false;
+  auto fname = Callee->getName();
+  if (fname == "_Znwm" || fname == "malloc" || fname == "_mm_malloc" ||
+      fname == "alloc")
+    return true;
 }
-
 
 bool CarePass::isCallingSimpleKernel(CallInst *CI) {
   if (isMemAlloc(CI)) return false;
@@ -92,7 +92,6 @@ bool CarePass::isMath(CallInst *CI) {
     return true;
   return false;
 }
-
 
 Value *CarePass::getPointerOperand(Instruction *Insn) {
   if (auto LI = dyn_cast<LoadInst>(Insn)) {
@@ -207,10 +206,11 @@ void CarePass::resolveConflictDbgInfo(Module &M) {
 
   for (auto mit = DbgLocMap.begin(); mit != DbgLocMap.end(); mit++) {
     if (mit->second.size() == 1) continue;
-    // dbgs() << "DbgLoc: " << *(mit->first) << "(line: " << mit->first->getLine()
-           //<< ", Col:" << mit->first->getColumn() << ")\n";
+    // dbgs() << "DbgLoc: " << *(mit->first) << "(line: " <<
+    // mit->first->getLine()
+    //<< ", Col:" << mit->first->getColumn() << ")\n";
     for (int i = 1; i < mit->second.size(); i++) {
-      //dbgs() << "\t" << *(mit->second[i]) << "\n";
+      // dbgs() << "\t" << *(mit->second[i]) << "\n";
       unsigned line = mit->first->getLine();
       unsigned col = mit->first->getColumn() + i;
       DebugLoc loc = DebugLoc::get(line, col, mit->first->getScope(),
@@ -487,7 +487,7 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
         for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
           Value *Op = CI->getArgOperand(i);
           if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) continue;
-          //dbgs() << "Put " << *Op << "into stmts.\n";
+          // dbgs() << "Put " << *Op << "into stmts.\n";
           Workspace.insert(Workspace.begin(), Op);
         }
       }
