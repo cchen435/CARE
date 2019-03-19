@@ -599,7 +599,9 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
     } else
       for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
         Value *Op = Insn->getOperand(i);
-        if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) {
+        DEBUG_WITH_TYPE("RK", dbgs() << "Resolve Operand: " << *Op << "\n");
+        // if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) {
+        if (isa<Constant>(Op)) {
           Operands.push_back(Op);
         } else if (VMap.find(Op) != VMap.end()) {
           Operands.push_back(VMap[Op]);
@@ -620,7 +622,7 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
 
     VMap[Insn] = Inst;
   }
-    DEBUG_WITH_TYPE("RK", dbgs() << "Finalize the kernel.\n");
+  DEBUG_WITH_TYPE("RK", dbgs() << "Finalize the kernel.\n");
 
   Value *T;
   if (Stmts.size())
@@ -630,7 +632,7 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
   else
     llvm_unreachable("Zero stmts and more than 1 params");
 
-    DEBUG_WITH_TYPE("RK", dbgs() << "Terminal Value:  " << *T << "\n");
+  DEBUG_WITH_TYPE("RK", dbgs() << "Terminal Value:  " << *T << "\n");
 
   DEBUG_WITH_TYPE("RK", {
     Type *STy = T->getType();
@@ -717,6 +719,9 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
       break;
     case Instruction::Select:
       Inst = IRB.CreateSelect(Operands[0], Operands[1], Operands[2]);
+      break;
+    case Instruction::ExtractValue:
+      Inst = IRB.CreateExtractValue(Operands[0], );
       break;
     case Instruction::InsertElement:
       Inst = IRB.CreateInsertElement(Operands[0], Operands[1], Operands[2]);
