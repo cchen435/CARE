@@ -312,8 +312,6 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    // if (F.getName() != "chargei") continue;
-
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
     DISubprogram *DIFunc = nullptr;
@@ -328,8 +326,6 @@ bool CarePass::runOnModule(Module &M) {
       Function *kernel;
       std::set<Value *> params;
       std::tie(kernel, params) = buildRecoveryKernel(&*I);
-      dbgs() << "Instruction: " << *I << "\n";
-      dbgs() << "num. params: " << params.size() << "\n";
 
       if (!kernel) continue;
 
