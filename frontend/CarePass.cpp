@@ -620,6 +620,7 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
 
     VMap[Insn] = Inst;
   }
+    DEBUG_WITH_TYPE("RK", dbgs() << "Finalize the kernel.\n");
 
   Value *T;
   if (Stmts.size())
@@ -629,10 +630,11 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
   else
     llvm_unreachable("Zero stmts and more than 1 params");
 
+    DEBUG_WITH_TYPE("RK", dbgs() << "Terminal Value:  " << *T << "\n");
+
   DEBUG_WITH_TYPE("RK", {
     Type *STy = T->getType();
-    dbgs() << "Final Type Conv Inst: " << *(Stmts.back()) << "\tType: " << *STy
-           << "\n";
+    dbgs() << "Final Type Conv Inst: " << *T << "\tType: " << *STy << "\n";
   });
 
   Value *Final =
