@@ -623,7 +623,8 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
 
   Value *T;
   if (Stmts.size())
-    T = Stmts.back() else if (Params.size() == 1) T = Params[0];
+    T = Stmts.back();
+  else if (Params.size() == 1) T = Params[0];
   else
     llvm_unreachable("Zero stmts and more than 1 params");
 
