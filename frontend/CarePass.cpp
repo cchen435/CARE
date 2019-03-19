@@ -512,8 +512,8 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
     }
   });
 
-  DEBUG_WITH_TYPE("info", dbgs() << "Body:\n");
-  DEBUG_WITH_TYPE("info", for (unsigned i = 0; i < Stmts.size(); i++) {
+  DEBUG_WITH_TYPE("stmt", dbgs() << "Body:\n");
+  DEBUG_WITH_TYPE("stmt", for (unsigned i = 0; i < Stmts.size(); i++) {
     dbgs() << "\tStmt[" << i << "]: " << *Stmts[i] << "\n";
   });
   DEBUG_WITH_TYPE("info", dbgs() << "\n\n");
@@ -566,6 +566,7 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
   for (Value *V : Stmts) {
     // avoid duplications, since vector is used when retrieving
     // computing instructions
+    DEBUG_WITH_TYPE("RK", dbgs() << "Working on inst :" << *V << "\n");
     if (VMap.find(V) != VMap.end()) continue;
     DEBUG_WITH_TYPE("RK", dbgs() << "Working on inst :" << *V << "\n");
 
@@ -620,14 +621,20 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
     VMap[Insn] = Inst;
   }
 
+  Value *T;
+  if (Stmts.size())
+    T = Stmts.back() else if (Params.size() == 1) T = Params[0];
+  else
+    llvm_unreachable("Zero stmts and more than 1 params");
+
   DEBUG_WITH_TYPE("RK", {
-    Type *STy = Stmts.back()->getType();
+    Type *STy = T->getType();
     dbgs() << "Final Type Conv Inst: " << *(Stmts.back()) << "\tType: " << *STy
            << "\n";
   });
 
-  Value *Final = IRB.CreateSExtOrBitCast(
-      VMap[Stmts.back()], Type::getInt8PtrTy(CareM->getContext()));
+  Value *Final =
+      IRB.CreateSExtOrBitCast(VMap[T], Type::getInt8PtrTy(CareM->getContext()));
   IRB.CreateRet(Final);
 
   DEBUG_WITH_TYPE("RK", dbgs() << "Function: \n" << *RK);
