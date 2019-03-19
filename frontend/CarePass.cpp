@@ -667,6 +667,9 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
   Value *Inst;
   Function *Callee;
   switch (Insn->getOpcode()) {
+    case Instruction::AShr:
+      Inst = IRB.CreateAShr(Operands[0], Operands[1]);
+      break;
     case Instruction::Add:
       Inst = IRB.CreateAdd(Operands[0], Operands[1]);
       break;
