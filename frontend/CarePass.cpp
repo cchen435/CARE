@@ -212,7 +212,7 @@ void CarePass::resolveConflictDbgInfo(Module &M) {
     for (int i = 1; i < mit->second.size(); i++) {
       // dbgs() << "\t" << *(mit->second[i]) << "\n";
       unsigned line = mit->first->getLine();
-      unsigned col = mit->first->getColumn() + i;
+      unsigned col = mit->first->getColumn() + i + 100;
       DebugLoc loc = DebugLoc::get(line, col, mit->first->getScope(),
                                    mit->first->getInlinedAt());
 
