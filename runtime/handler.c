@@ -4,6 +4,13 @@
 #include "types.h"
 #include "util.h"
 
+static long long int start, end;
+static long long int gettime() {
+  struct timeval tval;
+  gettimeofday(&tval, NULL);
+  return tval.tv_sec * 1000000 + tval.tv_usec;
+}
+
 void care_segv_handler(int signo, siginfo_t *info, void *context) {
   int retval;
   uint64_t rvalue;
@@ -12,6 +19,8 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
   care_routine_t routine;
   care_target_t target;
   care_status_t status;
+
+  start = gettime();
 
   /**
    * initialize the library, it will simply:
@@ -78,6 +87,8 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
     ctx.log.status = CARE_SUCCESS;
   }
   care_util_finish(&ctx);
+  end = gettime();
+  fprintf(stderr, "recovery time: %f\n", (end - start) * 1.0 / 1000);
   return;
 fexit:  // exit with failure
   // clean the library
