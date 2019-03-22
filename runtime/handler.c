@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include "errx.h"
 #include "types.h"
