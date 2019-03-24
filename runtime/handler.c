@@ -1,11 +1,10 @@
 #include <signal.h>
-#include <sys/time.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include "errx.h"
 #include "types.h"
 #include "util.h"
 
-static long long int start, end;
 static long long int gettime() {
   struct timeval tval;
   gettimeofday(&tval, NULL);

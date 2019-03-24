@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <ucontext.h>
 #include <udis86.h>
 #include <unistd.h>
@@ -33,6 +34,14 @@
 #elif __i386__
 #define CARE_REG_IP REG_EIP
 #endif
+
+static uint64_t start, end;
+
+static uint64_t gettime() {
+  struct timeval tval;
+  gettimeofday(&tval, NULL);
+  return tval.tv_sec * 1000000 + tval.tv_usec;
+}
 
 static uint64_t prev_pc = 0;
 
@@ -172,6 +181,8 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   extern char *program_invocation_name;
   char filename[128];
 
+  start = gettime();
+
   char *expr_path = getenv("CARE_EXPR_PATH");
   char *worker = getenv("CARE_WORKER_ID");
   char *injection = getenv("CARE_INJECTION_ID");
@@ -240,14 +251,17 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
  */
 void care_util_finish(care_context_t *context) {
   char record[1024];
+  end = gettime();
+  fprintf(stderr, "recovery time: %f\n", (end - start) * 1.0 / 1000);
   sprintf(
       record,
       "ID:%s; PC:0x%016lx; Insn: %s; Key: %s; Mem: %016lx; Status: %s; Msg: "
-      "%s\n",
+      "%s; Latency(ms): %f\n",
       context->log.inject, context->pc, context->insn, context->log.key,
       context->log.memaddr,
       context->log.status == CARE_SUCCESS ? "Success" : "Failure",
-      context->log.status == CARE_SUCCESS ? "Success" : care_err_get_errmsg());
+      context->log.status == CARE_SUCCESS ? "Success" : care_err_get_errmsg(),
+      (end - start) * 1.0 / 1000);
   fputs(record, context->logfp);
   fflush(context->logfp);
   fflush(stderr);
