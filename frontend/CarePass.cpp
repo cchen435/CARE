@@ -312,6 +312,8 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
+    // if (F.getName() != "_ZNKSt4lessIiEclERKiS2_") continue;
+
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
     DISubprogram *DIFunc = nullptr;
@@ -322,6 +324,8 @@ bool CarePass::runOnModule(Module &M) {
 
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
       if (!isMemAccInst(&*I)) continue;
+
+      // dbgs() << "Working on Instruction: " << *I << "\n";
 
       Function *kernel;
       std::set<Value *> params;
@@ -392,6 +396,7 @@ bool CarePass::runOnModule(Module &M) {
       for (auto U : I->users()) {
         if (auto Insn = dyn_cast<BinaryOperator>(U)) Insn->setDebugLoc(loc);
         if (auto Insn = dyn_cast<CastInst>(U)) Insn->setDebugLoc(loc);
+        if (auto Insn = dyn_cast<CmpInst>(U)) Insn->setDebugLoc(loc);
       }
     }
 

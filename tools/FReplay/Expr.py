@@ -16,7 +16,7 @@ import sys
 import time
 
 
-def json_parser(ffile, filter='SIGSEGV'):
+def json_parser(ffile, IDs, filter='SIGSEGV'):
     result = list()
     with open(ffile) as fh:
         for line in fh.readlines():
@@ -27,6 +27,9 @@ def json_parser(ffile, filter='SIGSEGV'):
                 continue
 
             id = record['id']
+            if IDs and id not in IDs:
+                continue
+
             ip = record['fault']['dyn_inst'][0]
             iter = record['fault']['dyn_inst'][1]
             bit = record['fault']['bit_flipped']
@@ -39,7 +42,7 @@ def json_parser(ffile, filter='SIGSEGV'):
 
 
 class FRExpr(object):
-    def __init__(self, expr_path, expr_exec, exec_args, ffile, num_workers=0, log_level='debug'):
+    def __init__(self, expr_path, expr_exec, exec_args, ffile, Filter, num_workers=0, log_level='debug'):
         """
         FRExpr represents an replay experiment.
 
@@ -64,7 +67,7 @@ class FRExpr(object):
 
         self._exec_args = exec_args
 
-        self._faults = json_parser(ffile)
+        self._faults = json_parser(ffile, Filter)
 
         if num_workers:
             self._num_workers = num_workers

@@ -18,6 +18,8 @@ def add_parser():
                       dest='exprid', help='The experiment id/name')
     parser.add_option('-f', '--file', type='string',
                       dest='file', help='The json file for faults')
+    parser.add_option('-t', '--filter', type='string',
+                      dest='Filter', help='The json file for faults injections')
     parser.add_option('-n', '--workers', type='int', dest='num_workers',
                       help='number of workers')
     return parser
@@ -32,6 +34,15 @@ def parse_arguments(args, opts):
     faults = Path(faults).absolute()
 
     num_workers = opts['num_workers']
+
+    Filter = opts['Filter']
+    Filter = Path(Filter).absolute()
+    if Filter.exists():
+        with open(Filter) as fh:
+            Filter = fh.readlines()
+            Filter = [line.strip() for line in Filter]
+    else:
+        Filter = None
 
     # this is to add support for passing applications and their arguments as a single string
     # e.g. gdbfi <options for gdbfi> apps <options for executable>
@@ -51,9 +62,10 @@ def parse_arguments(args, opts):
     print("Exec: ", executable)
     print("Args: ", arguments)
     print('Faluts: ', faults)
+    print('Filter: ', Filter)
     print("Num_workers: ", num_workers)
 
-    return (executable, arguments, expr_path, faults, num_workers)
+    return (executable, arguments, expr_path, faults, Filter, num_workers)
 
 
 def main():
@@ -64,12 +76,11 @@ def main():
     (opts, args) = parser.parse_args()
     opts = vars(opts)
 
-    (exe, params, path, faults, num_workers) = parse_arguments(args, opts)
-
+    (exe, params, path, faults, Filter, num_workers) = parse_arguments(args, opts)
     if num_workers:
-        expr = FRExpr(path, exe, params, faults, num_workers)
+        expr = FRExpr(path, exe, params, faults, Filter, num_workers)
     else:
-        expr = FRExpr(path, exe, params, faults)
+        expr = FRExpr(path, exe, params, faults, Filter)
 
     expr.run()
 
