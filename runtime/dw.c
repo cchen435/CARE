@@ -1119,8 +1119,11 @@ care_status_t care_dw_get_src_info(care_dwarf_t dwarf, Dwarf_Addr PC,
 
       retval = 1;
     }
-    dwarf_dealloc(dwarf_handle, linebuf[i], DW_DLA_LINE);
     if (retval) break;
+  }
+
+  for (i = 0; i < linecount - 1; i++) {
+    dwarf_dealloc(dwarf_handle, linebuf[i], DW_DLA_LINE);
   }
 
   dwarf_dealloc(dwarf_handle, linebuf, DW_DLA_LIST);
