@@ -36,8 +36,12 @@ def parse_arguments(args, opts):
     num_workers = opts['num_workers']
 
     Filter = opts['Filter']
-    Filter = Path(Filter).absolute()
-    if Filter.exists():
+    print(Filter)
+    if Filter:
+        Filter = Path(Filter).absolute()
+    print(Filter)
+    if Filter and Filter.exists():
+        print(Filter)
         with open(Filter) as fh:
             Filter = fh.readlines()
             Filter = [line.strip() for line in Filter]

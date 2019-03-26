@@ -38,6 +38,7 @@ bool CarePass::isMemAccInst(Instruction *Insn) {
   if (!isa<StoreInst>(Insn) && !isa<LoadInst>(Insn)) return false;
   auto Addr = getPointerOperand(Insn);
   if (isa<LoadInst>(Addr)) return true;
+  if (isa<CastInst>(Addr)) Addr = dyn_cast<CastInst>(Addr)->getOperand(0);
   if (isa<CallInst>(Addr) && isCallingSimpleKernel(dyn_cast<CallInst>(Addr)))
     return true;
   else if (!isa<GetElementPtrInst>(Addr))
