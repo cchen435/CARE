@@ -190,6 +190,7 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   // expr environment setup error
   if (!expr_path || !worker || !injection) {
     fprintf(stderr, "No experiment related environmnt variable found.\n");
+    fflush(stderr);
     care_err_set_code(CARE_NO_ENV);
     return CARE_FAILURE;
   }

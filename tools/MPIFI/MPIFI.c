@@ -70,8 +70,8 @@ void spawn(pid_t target) {
     fvalue = 0;
 
 #if DEBUG
-  fprintf(stderr, "Fault Info: Addr -- %lx, REG -- %s, Data -- %lx.\n", addr,
-          reg, fvalue);
+  fprintf(stderr, "[MPIFI] Fault Info: Addr -- %lx, REG -- %s, Data -- %lx.\n",
+          addr, reg, fvalue);
 #endif
 
   pid_t child = fork();
@@ -129,8 +129,25 @@ int FI(pid_t pid, void *addr, char *rname, uint64_t fvalue) {
     if (WSTOPSIG(status) == SIGSEGV) return -1;
   }
 
+  ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL);
+
+  waitpid(pid, &status, 0);
+
+  if (WIFEXITED(status)) {
+    fprintf(stderr, "process existed\n");
+    return -1;
+  }
+
+  if (WIFSTOPPED(status)) {
+    fprintf(stderr, "Get singal: %s\n", strsignal(WSTOPSIG(status)));
+    if (WSTOPSIG(status) == SIGSEGV) return -1;
+  }
+
   // inject the error
-  ret = write_reg(pid, addr, fvalue);
+  fprintf(stderr, "Before injection %s, %lx\n", rname, read_reg(pid, rname));
+  fprintf(stderr, "Inject fault to %s, %lx\n", rname, fvalue);
+  ret = write_reg(pid, rname, fvalue);
+  fprintf(stderr, "After injection %s, %lx\n", rname, read_reg(pid, rname));
 
   // retore the code at breakpoint
   ret = writew(pid, addr, inst);
