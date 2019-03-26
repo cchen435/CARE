@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <mpi.h>
 #include <signal.h>
 #include <stdint.h>
@@ -50,10 +51,11 @@ int MPI_Init(int *argc, char ***argv) {
 
 void spawn(pid_t target) {
   char *tmp;
-  int reg;
+  char *reg;
   uint64_t addr, fvalue;
 
-  tmp = getenv("CARE_TARGET_REG");
+  reg = getenv("CARE_TARGET_REG");
+  assert(reg);
 
   tmp = getenv("CARE_TARGET_ADDR");
   if (tmp)
@@ -68,7 +70,7 @@ void spawn(pid_t target) {
     fvalue = 0;
 
 #if DEBUG
-  fprintf(stderr, "Fault Info: Addr -- %lx, REG -- %d, Data -- %lx.\n", addr,
+  fprintf(stderr, "Fault Info: Addr -- %lx, REG -- %s, Data -- %lx.\n", addr,
           reg, fvalue);
 #endif
 
