@@ -13,7 +13,7 @@
 #include <set>
 
 #include "CarePass.h"
-
+#include "LivenessAnalysis.h"
 #include "tb.h"
 
 using namespace llvm;
@@ -37,12 +37,16 @@ bool CarePass::isStoreToAlloca(Value *V) {
 bool CarePass::isMemAccInst(Instruction *Insn) {
   if (!isa<StoreInst>(Insn) && !isa<LoadInst>(Insn)) return false;
   auto Addr = getPointerOperand(Insn);
-  if (isa<LoadInst>(Addr)) return true;
   if (isa<CastInst>(Addr)) Addr = dyn_cast<CastInst>(Addr)->getOperand(0);
+#if 0
+  if (isa<LoadInst>(Addr)) return true;
   if (isa<CallInst>(Addr) && isCallingSimpleKernel(dyn_cast<CallInst>(Addr)))
     return true;
   else if (!isa<GetElementPtrInst>(Addr))
     return false;
+#else
+  if (isa<AllocaInst>(Insn)) return false;
+#endif
   return true;
 }
 
@@ -126,8 +130,10 @@ void CarePass::initialize(Module &M) {
 
 std::string CarePass::getOrCreateValueName(Value *V) {
   std::string name;
+  /* we are using the value of a variable */
   if (isLoadFromAlloca(V)) V = dyn_cast<LoadInst>(V)->getPointerOperand();
   if (isStoreToAlloca(V)) V = dyn_cast<StoreInst>(V)->getPointerOperand();
+
   if (DbgValueMap.find(V) != DbgValueMap.end()) {
     auto DbgInst = DbgValueMap[V];
     DILocalVariable *Var;
@@ -313,12 +319,15 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    // if (F.getName() != "_ZNKSt4lessIiEclERKiS2_") continue;
-
+    if (F.getName() != "smooth") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
-    DISubprogram *DIFunc = nullptr;
+    LivenessAnalysis LA(F);
+
     std::set<Value *> Variables;
+
+    // if debug is not enabled, create one for the function
+    DISubprogram *DIFunc = nullptr;
     if (!hasDebugInfo) DIFunc = DbgInfoBuilder->createDIFunction(F);
 
     curr = &F;
@@ -326,44 +335,37 @@ bool CarePass::runOnModule(Module &M) {
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
       if (!isMemAccInst(&*I)) continue;
 
-      // dbgs() << "Working on Instruction: " << *I << "\n";
-
+      // build the recovery kernel for the function
       Function *kernel;
       std::set<Value *> params;
       std::tie(kernel, params) = buildRecoveryKernel(&*I);
 
       if (!kernel) continue;
 
-      DEBUG_WITH_TYPE("RK", dbgs() << "created a recovery kernel: "
+      DEBUG_WITH_TYPE("RK", dbgs() << "Created a recovery kernel: "
                                    << "\n\tname: " << kernel->getName()
                                    << "\n\tFunctionType: "
                                    << *kernel->getFunctionType() << "\n");
 
       Variables.insert(params.begin(), params.end());
+
       // get the debug info for the memory access instruction.
       // if it does not exist, create one
       DebugLoc loc;
       if (hasDebugInfo) {  // if debug flag is enabled
         loc = I->getDebugLoc();
-        // Debug data could be missed for some instruction even when compiled
-        // with -g flag. Especially after some code optimizations.
         if (!loc) {
-          DEBUG_WITH_TYPE(
-              "DBGLOC", dbgs() << "\n\nNo Debug Data for: " << *I
-                               << "\n\tSearching for its nearby instructions.");
+          // Debug data could be missed for some instruction even when compiled
+          // with -g flag. Especially after some code optimizations. In such
+          // case we will create a one for it based on the debugloc of its
+          // nearby instruction, but not cross a memory access instruction
           loc = getNearbyDebugLoc(&*I);
           if (!loc) {
             DIFunc = I->getFunction()->getSubprogram();
             static int Fline = 0;
             static int Fcol = 0;
             loc = DebugLoc::get(++Fline, ++Fcol, DIFunc);
-            DEBUG_WITH_TYPE("DBGLOC",
-                            dbgs() << "\n\nNo Debug Data for: " << *I
-                                   << "\n\tand so for its nearby instructions."
-                                   << "\n\tCreated a fake one: " << *loc
-                                   << "\n\tFunction Type: " << *DIFunc);
           }
-          DEBUG_WITH_TYPE("DBGLOC", dbgs() << "\n\n");
           I->setDebugLoc(loc);
         }
       } else  // if debug flag is not enabled
@@ -383,6 +385,7 @@ bool CarePass::runOnModule(Module &M) {
       });
       care_tb_add_record(rtb, key, kernel, pnames);
 
+      // get a copy of human-readable recovery table
       rktable += getFilename(loc->getScope()->getFilename()) +
                  "\t\tLine: " + std::to_string(loc->getLine()) +
                  "\tCol: " + std::to_string(loc->getColumn()) + "\t" +
@@ -391,8 +394,8 @@ bool CarePass::runOnModule(Module &M) {
         rktable += (pnames[i] + ", ");
       rktable += (pnames[pnames.size() - 1] + ")\n");
 
-      // promote the debug data to all of its binary users
-      // since in x86 architecture, the binary operation could
+      // promote the debug data to some of its users
+      // since in x86 architecture, the some operation could
       // be merged with a memort access instruction
       for (auto U : I->users()) {
         if (auto Insn = dyn_cast<BinaryOperator>(U)) Insn->setDebugLoc(loc);
@@ -401,11 +404,12 @@ bool CarePass::runOnModule(Module &M) {
       }
     }
 
-    // Create DILocalVariable for referenced values
-    if (!hasDebugInfo) {
-      for (auto it = Variables.begin(); it != Variables.end(); it++) {
-        std::string VName = getOrCreateValueName(*it);
-        DbgInfoBuilder->createDIVariable(*it, VName, DIFunc);
+    // Create DILocalVariable for referenced values if it doesnot have
+    for (auto it = Variables.begin(); it != Variables.end(); it++) {
+      Value *V = *it;
+      if (DbgValueMap.find(V) == DbgValueMap.end()) {
+        std::string VName = getOrCreateValueName(V);
+        DbgInfoBuilder->createDIVariable(V, VName, DIFunc);
       }
     }
   }
@@ -474,9 +478,9 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
   while (Workspace.size()) {
     Value *V = Workspace.back();
     Workspace.pop_back();
-
-    if (isa<Argument>(V) || isa<PHINode>(V) || isa<GlobalValue>(V) ||
-        isa<AllocaInst>(V)) {
+    if (isa<AllocaInst>(V)) {
+      llvm_unreachable("We expect a load from Alloca, not alloca directly");
+    } else if (isa<Argument>(V) || isa<PHINode>(V) || isa<GlobalValue>(V)) {
       Params.insert(V);
     } else if (isLoadFromAlloca(V) || isStoreToAlloca(V)) {
       Params.insert(V);

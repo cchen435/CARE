@@ -30,8 +30,6 @@ struct CarePass : public ModulePass {
     AU.setPreservesAll();
     AU.addRequired<LoopInfoWrapperPass>();
     // AU.addRequired<DominatorTreeWrapperPass>();
-    // AU.addRequired<TargetLibraryInfoWrapperPass>();
-    // AU.addRequired<AssumptionCacheTracker>();
   }
 
  private:
@@ -63,12 +61,12 @@ struct CarePass : public ModulePass {
   bool isMemAlloc(CallInst *CI);
   bool isLoadFromAlloca(Value *V);
   bool isStoreToAlloca(Value *V);
-
   bool isMemAccInst(Instruction *Insn);
   Value *getPointerOperand(Instruction *Insn);
   DebugLoc getNearbyDebugLoc(Instruction *Insn);
 
   void resolveConflictDbgInfo(Module &M);
+
   /**
    * when the program is compiled with -g flag this method is
    * called to setup the VMMap
@@ -105,6 +103,11 @@ struct CarePass : public ModulePass {
       return "care_recover_k" + std::to_string(++i);
   };
 
+  /**
+   * get the human readable name for the value. if value have original
+   * name from source code, we will use that one, otherwise a fake one
+   * will be generated.
+   */
   std::string getOrCreateValueName(Value *V);
   std::string getFilename(StringRef filename);
   std::string getKey(DebugLoc Loc);

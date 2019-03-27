@@ -2,6 +2,7 @@ add_library(CAREPass MODULE
     # List your source files here.
     CarePass.cpp
     DbgInfo.cpp
+    LivenessAnalysis.cpp
 )
 
 include_directories(${LLVM_INCLUDE_DIRS})
