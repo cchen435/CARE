@@ -26,10 +26,10 @@ class MPIApp(object):
         fname = str(Path(exe).stem)
         self._cmd = ['mpirun', '-np',
                      str(nprocesses), '-output-filename', fname]
+        '''
 
         if hostfile:
             self._cmd += ['-hostfile', hostfile]
-        '''
         if CARE:
             self._cmd += ['-x', 'LD_PRELOAD=%s' % CARE]
         self._cmd += [exe] + args
@@ -105,6 +105,7 @@ class MPIFIExpr(object):
             if not wd.exists():
                 wd.mkdir()
 
+            wd = str(wd)
             os.chdir(wd)
 
             app = MPIApp(self._exe, self._args,
@@ -112,7 +113,7 @@ class MPIFIExpr(object):
             app.start()
             app.wait(1200)
 
-            os.chdir(self._path)
+            os.chdir(str(self._path))
 
 
 def add_parser():
@@ -141,7 +142,7 @@ def parse_arguments(args, opts):
 
     hosts = opts['hosts']
     if hosts:
-        hosts = Path(hosts).absolute()
+        hosts = str(Path(hosts).absolute())
 
     # this is to add support for passing applications and their arguments as a single string
     # e.g. gdbfi <options for gdbfi> apps <options for executable>
