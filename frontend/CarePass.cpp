@@ -45,7 +45,8 @@ bool CarePass::isMemAccInst(Instruction *Insn) {
   else if (!isa<GetElementPtrInst>(Addr))
     return false;
 #else
-  if (isa<AllocaInst>(Insn)) return false;
+  if (isa<AllocaInst>(Addr) || isa<GlobalValue>(Addr)) return false;
+
 #endif
   return true;
 }
@@ -98,6 +99,13 @@ bool CarePass::isMath(CallInst *CI) {
   return false;
 }
 
+bool CarePass::isStdlibVariable(Value *V) {
+  auto GV = dyn_cast<GlobalVariable>(V);
+  if (!GV) return false;
+  if (GV->isDeclaration()) return true;
+  return false;
+}
+
 Value *CarePass::getPointerOperand(Instruction *Insn) {
   if (auto LI = dyn_cast<LoadInst>(Insn)) {
     return LI->getPointerOperand();
@@ -117,12 +125,7 @@ Value *CarePass::getPointerOperand(Instruction *Insn) {
 void CarePass::initialize(Module &M) {
   // if the module has no debug data (by checking whether the
   // module dwarf version information), a DIBuilder will be created.
-  hasDebugInfo = M.getDwarfVersion() ? true : false;
-  if (hasDebugInfo) {
-    resolveConflictDbgInfo(M);
-    getDbgInfo(M);
-  } else
-    DbgInfoBuilder = new CAREDIBuilder(M);
+  DbgInfoBuilder = new CAREDIBuilder(M);
   CareM = new Module("Care", M.getContext());
   CareM->setTargetTriple(M.getTargetTriple());
   CareM->setDataLayout(M.getDataLayout());
@@ -134,8 +137,7 @@ std::string CarePass::getOrCreateValueName(Value *V) {
   if (isLoadFromAlloca(V)) V = dyn_cast<LoadInst>(V)->getPointerOperand();
   if (isStoreToAlloca(V)) V = dyn_cast<StoreInst>(V)->getPointerOperand();
 
-  if (DbgValueMap.find(V) != DbgValueMap.end()) {
-    auto DbgInst = DbgValueMap[V];
+  if (auto DbgInst = DbgInfoBuilder->getDbgInfoIntrinsic(V)) {
     DILocalVariable *Var;
     if (isa<DbgValueInst>(DbgInst))
       Var = dyn_cast<DbgValueInst>(DbgInst)->getVariable();
@@ -192,120 +194,6 @@ std::string CarePass::getKey(DebugLoc loc) {
   return result;
 }
 
-void CarePass::resolveConflictDbgInfo(Module &M) {
-  std::map<DebugLoc, std::vector<Instruction *>> DbgLocMap;
-  Module::FunctionListType &funcs = M.getFunctionList();
-  for (Module::FunctionListType::iterator it = funcs.begin(), end = funcs.end();
-       it != end; it++) {
-    Function &F = *it;
-    if (F.isDeclaration() || F.isIntrinsic()) continue;
-    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
-      Instruction *Insn = &*I;
-      if (!isa<LoadInst>(Insn) && !isa<StoreInst>(Insn)) continue;
-      // if (!isMemAccInst(Insn)) continue;
-      DebugLoc DbgLoc = Insn->getDebugLoc();
-      if (!DbgLoc) continue;
-      if (DbgLocMap.find(DbgLoc) == DbgLocMap.end())
-        DbgLocMap[DbgLoc] = std::vector<Instruction *>();
-      DbgLocMap[DbgLoc].push_back(Insn);
-    }
-  }
-
-  for (auto mit = DbgLocMap.begin(); mit != DbgLocMap.end(); mit++) {
-    if (mit->second.size() == 1) continue;
-    // dbgs() << "DbgLoc: " << *(mit->first) << "(line: " <<
-    // mit->first->getLine()
-    //<< ", Col:" << mit->first->getColumn() << ")\n";
-    for (int i = 1; i < mit->second.size(); i++) {
-      // dbgs() << "\t" << *(mit->second[i]) << "\n";
-      unsigned line = mit->first->getLine();
-      unsigned col = mit->first->getColumn() + i + 100;
-      DebugLoc loc = DebugLoc::get(line, col, mit->first->getScope(),
-                                   mit->first->getInlinedAt());
-
-      mit->second[i]->setDebugLoc(loc);
-    }
-    // dbgs() << "\n";
-  }
-}
-
-void CarePass::getDbgInfo(Module &M) {
-  Module::FunctionListType &funcs = M.getFunctionList();
-  for (Module::FunctionListType::iterator it = funcs.begin(), end = funcs.end();
-       it != end; it++) {
-    Function &F = *it;
-
-    if (F.isDeclaration() || F.isIntrinsic()) continue;
-    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
-      if (auto DbgInst = dyn_cast<DbgInfoIntrinsic>(&*I)) {
-        DEBUG_WITH_TYPE("DBG", {
-          llvm::dbgs() << "Instruction: " << *DbgInst << "\t Ops: ";
-          for (unsigned i = 0; i < DbgInst->getNumArgOperands(); i++)
-            llvm::dbgs() << "\n\t" << *(DbgInst->getArgOperand(i));
-          llvm::dbgs() << "\n\n";
-        });
-
-        if (!isa<DbgDeclareInst>(&*I) && !isa<DbgValueInst>(&*I) &&
-            !isa<DbgAddrIntrinsic>(&*I)) {
-          dbgs() << "Unprocessed DbgInfoIntrinsic: " << *I << "\n";
-          llvm_unreachable("Unprocessed DbgInfoIntrinsic\n");
-        }
-
-        Value *V = DbgInst->getVariableLocation();
-        if (V) {  // in some casres
-          DbgValueMap[V] = DbgInst;
-          // if the value is simply a cast, the original operand refers to the
-          // same object
-          if (auto Cast = dyn_cast<BitCastInst>(V))
-            DbgValueMap[Cast->getOperand(0)] = DbgInst;
-        }
-      }
-    }
-  }
-
-  DEBUG_WITH_TYPE("DBG", {
-    llvm::dbgs() << "Debug Local Variables: ";
-    for (auto item : DbgValueMap)
-      llvm::dbgs() << "\n\tValue : " << *item.first << "(" << item.first << ")"
-                   << "\tdbg.value: " << *item.second;
-    llvm::dbgs() << "\n\n";
-  });
-}
-
-DebugLoc CarePass::getNearbyDebugLoc(Instruction *Insn) {
-  DebugLoc Prev, Next;
-  Instruction *P = Insn;
-  while (P = P->getPrevNode()) {
-    // dbgs() << "Prev: " << *P << "\n";
-    if (isMemAccInst(P)) break;
-    Prev = P->getDebugLoc();
-    if (Prev) break;
-  }
-
-  Instruction *N = Insn;
-  while (N = N->getNextNode()) {
-    // dbgs() << "Next: " << *N << "\n";
-    if (isMemAccInst(N)) break;
-    Next = N->getDebugLoc();
-    if (Next) break;
-  }
-
-  if (Prev && Next) {
-    // dbgs() << "Prev DebugLoc: " << *Prev << "\n";
-    // dbgs() << "Next DebugLoc: " << *Next << "\n";
-    int line = (Prev->getLine() + Next->getLine()) / 2;
-    int col = (Prev->getColumn() + Next->getColumn()) / 2;
-    return DebugLoc::get(line, col, Prev->getScope());
-  } else if (Prev) {
-    // dbgs() << "Prev DebugLoc: " << *Prev << "\n";
-    return Prev;
-  } else if (Next) {
-    // dbgs() << "Next DebugLoc: " << *Next << "\n";
-    return Next;
-  }
-  return nullptr;
-}
-
 bool CarePass::runOnModule(Module &M) {
   initialize(M);
 
@@ -319,21 +207,22 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    if (F.getName() != "smooth") continue;
+    // if (F.getName() != "smooth") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
+    // LivenessAnalysis LA(F, true);
     LivenessAnalysis LA(F);
 
     std::set<Value *> Variables;
 
-    // if debug is not enabled, create one for the function
-    DISubprogram *DIFunc = nullptr;
-    if (!hasDebugInfo) DIFunc = DbgInfoBuilder->createDIFunction(F);
+    DISubprogram *DIFunc = DbgInfoBuilder->getOrCreateDIFunction(F);
 
     curr = &F;
 
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
       if (!isMemAccInst(&*I)) continue;
+
+      // dbgs() << "Preocessing Insruction: " << *I << "\n";
 
       // build the recovery kernel for the function
       Function *kernel;
@@ -351,31 +240,16 @@ bool CarePass::runOnModule(Module &M) {
 
       // get the debug info for the memory access instruction.
       // if it does not exist, create one
-      DebugLoc loc;
-      if (hasDebugInfo) {  // if debug flag is enabled
-        loc = I->getDebugLoc();
-        if (!loc) {
-          // Debug data could be missed for some instruction even when compiled
-          // with -g flag. Especially after some code optimizations. In such
-          // case we will create a one for it based on the debugloc of its
-          // nearby instruction, but not cross a memory access instruction
-          loc = getNearbyDebugLoc(&*I);
-          if (!loc) {
-            DIFunc = I->getFunction()->getSubprogram();
-            static int Fline = 0;
-            static int Fcol = 0;
-            loc = DebugLoc::get(++Fline, ++Fcol, DIFunc);
-          }
-          I->setDebugLoc(loc);
-        }
-      } else  // if debug flag is not enabled
-        loc = DbgInfoBuilder->setDIDebugLoc(&*I, DIFunc);
-
+      DebugLoc loc = DbgInfoBuilder->getOrCreateDebugLoc(&*I, DIFunc);
       // build the recovery kernel table
       std::string key = getKey(loc);
+
       std::vector<std::string> pnames;
-      for (auto it = params.begin(); it != params.end(); it++)
+      std::vector<Value *> cparams;
+      for (auto it = params.begin(); it != params.end(); it++) {
         pnames.push_back(getOrCreateValueName(*it));
+        cparams.push_back(*it);
+      }
 
       DEBUG_WITH_TYPE("RTB", {
         dbgs() << "Create RTB Entry: "
@@ -391,42 +265,31 @@ bool CarePass::runOnModule(Module &M) {
                  "\tCol: " + std::to_string(loc->getColumn()) + "\t" +
                  kernel->getName().str() + "(";
       for (auto i = 0; i < pnames.size() - 1; i++)
-        rktable += (pnames[i] + ", ");
-      rktable += (pnames[pnames.size() - 1] + ")\n");
-
-      // promote the debug data to some of its users
-      // since in x86 architecture, the some operation could
-      // be merged with a memort access instruction
-      for (auto U : I->users()) {
-        if (auto Insn = dyn_cast<BinaryOperator>(U)) Insn->setDebugLoc(loc);
-        if (auto Insn = dyn_cast<CastInst>(U)) Insn->setDebugLoc(loc);
-        if (auto Insn = dyn_cast<CmpInst>(U)) Insn->setDebugLoc(loc);
-      }
+        rktable += (pnames[i] + "[live:" +
+                    std::to_string(LA.isLiveAtPoint(cparams[i], &*I)) + "], ");
+      rktable +=
+          (pnames[pnames.size() - 1] + "[live: " +
+           std::to_string(LA.isLiveAtPoint(cparams[pnames.size() - 1], &*I)) +
+           "])\n");
     }
 
     // Create DILocalVariable for referenced values if it doesnot have
     for (auto it = Variables.begin(); it != Variables.end(); it++) {
       Value *V = *it;
-      if (DbgValueMap.find(V) == DbgValueMap.end()) {
+      if (!DbgInfoBuilder->hasDbgInfoIntrinsic(V)) {
         std::string VName = getOrCreateValueName(V);
         DbgInfoBuilder->createDIVariable(V, VName, DIFunc);
       }
     }
   }
 
-  if (!hasDebugInfo) DbgInfoBuilder->finalize();
-
   // save CareM to .bc file
   dbgs() << "Module Name: " << M.getName() << "\n";
-#if 0
-  std::string program = M.getName().ltrim("./").split('.').first.str();
-  std::string FileName = "lib" + program + "_care.bc";
-#else
   std::experimental::filesystem::path p =
       M.getName().split('/').second.split('.').first.str();
   std::string program = p.filename();
   std::string FileName = "lib" + program + "_care.bc";
-#endif
+
   std::error_code EC;
 
   dbgs() << "Writing CareM module to " << FileName << "\n";
@@ -478,9 +341,13 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
   while (Workspace.size()) {
     Value *V = Workspace.back();
     Workspace.pop_back();
-    if (isa<AllocaInst>(V)) {
-      llvm_unreachable("We expect a load from Alloca, not alloca directly");
-    } else if (isa<Argument>(V) || isa<PHINode>(V) || isa<GlobalValue>(V)) {
+    if (isStdlibVariable(V)) {
+      dbgs() << "External Variable" << *V << "\n";
+      // processing the case of library (external) variables, e.g. stdout,
+      // stderr, errno etc.
+      continue;
+    } else if (isa<AllocaInst>(V) || isa<Argument>(V) || isa<PHINode>(V) ||
+               isa<GlobalValue>(V)) {
       Params.insert(V);
     } else if (isLoadFromAlloca(V) || isStoreToAlloca(V)) {
       Params.insert(V);
@@ -639,8 +506,11 @@ Function *CarePass::createFunction(Type *RetTy, std::set<Value *> Params,
     T = Stmts.back();
   else if (Params.size() == 1)
     T = *Params.begin();
-  else
+  else {
+    dbgs() << "Stmts: " << Stmts.size() << "\t Params: " << Params.size()
+           << "\n";
     llvm_unreachable("Zero stmts and more than 1 params");
+  }
 
   DEBUG_WITH_TYPE("RK", dbgs() << "Terminal Value:  " << *T << "\n");
 

@@ -16,9 +16,11 @@ using namespace llvm;
 
 class LivenessAnalysis {
  public:
-  LivenessAnalysis(Function &F) { doLivenessAnalysis(F); };
+  LivenessAnalysis(Function &F, int DbgMode = false) {
+    if (!DbgMode) doLivenessAnalysis(F);
+  };
 
-  bool isLiveAtPoint(Instruction *insn, Instruction *pos);
+  bool isLiveAtPoint(Value *V, Instruction *pos);
 
  private:
   typedef std::map<Instruction *, std::set<Value *>> LivenessMap;

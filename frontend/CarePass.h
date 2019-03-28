@@ -46,12 +46,8 @@ struct CarePass : public ModulePass {
    * Reference:
    * https://llvm.org/devmtg/2014-10/Slides/Christopher-DebugInfoTutorial.pdf
    */
-  bool hasDebugInfo;
   CAREDIBuilder *DbgInfoBuilder;
-  // value to metadata map, used to get
-  // variable names when dbg (-g) is enabled
-  // std::map<Value *, DbgValueInst *> DbgValueMap;
-  std::map<Value *, DbgInfoIntrinsic *> DbgValueMap;
+
   std::string rktable;
 
  private:
@@ -62,10 +58,8 @@ struct CarePass : public ModulePass {
   bool isLoadFromAlloca(Value *V);
   bool isStoreToAlloca(Value *V);
   bool isMemAccInst(Instruction *Insn);
+  bool isStdlibVariable(Value *V);
   Value *getPointerOperand(Instruction *Insn);
-  DebugLoc getNearbyDebugLoc(Instruction *Insn);
-
-  void resolveConflictDbgInfo(Module &M);
 
   /**
    * when the program is compiled with -g flag this method is

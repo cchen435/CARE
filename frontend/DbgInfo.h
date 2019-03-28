@@ -13,6 +13,7 @@
 
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Debug.h>
 
@@ -29,7 +30,12 @@ class CAREDIBuilder {
   // a map from LLVM Value Type to DIType
   // it serves as cache purpose
   std::map<Type *, DIType *> Types;
-  int line, col;  // fake and unique line and col number
+
+  bool hasDebugInfo;
+
+  // value to metadata map, used to get
+  // variable names when dbg (-g) is enabled
+  std::map<Value *, DbgInfoIntrinsic *> DbgValueMap;
 
  private:
   DIType *createDIType(Type *Ty);
@@ -37,12 +43,21 @@ class CAREDIBuilder {
   DIType *getOrCreateDIType(Type *Ty);
 
  private:
-  int getLineNumber() { return ++line; };
-  int getColNumber() { return ++col; };
+  int getLineNumber() {
+    static int line = 20000;
+    return ++line;
+  };
+  int getColNumber() {
+    static int col = 100;
+    return ++col;
+  };
+  void getDbgInfo(Module &M);
+  void resolveConflictDbgInfo(Module &M);
 
  public:
   CAREDIBuilder(Module &M, int lang = dwarf::DW_LANG_C);
   ~CAREDIBuilder() {
+    if (!hasDebugInfo) DBuilder->finalize();
     dbgs() << "Finalize CAREDIBuilder and Free DBuilder\n";
     delete DBuilder;
   }
@@ -50,7 +65,14 @@ class CAREDIBuilder {
   DISubprogram *createDIFunction(Function &F);
   DILocalVariable *createDIVariable(Value *V, std::string VName, DIScope *Scop);
   DebugLoc setDIDebugLoc(Instruction *Insn, DIScope *Scop);
+  DebugLoc getNearbyDebugLoc(Instruction *Insn);
   void finalize() { DBuilder->finalize(); }
+
+ public:
+  DISubprogram *getOrCreateDIFunction(Function &F);
+  DebugLoc getOrCreateDebugLoc(Instruction *Insn, DIScope *Scop);
+  bool hasDbgInfoIntrinsic(Value *V);
+  DbgInfoIntrinsic *getDbgInfoIntrinsic(Value *V);
 };
 
 #endif
