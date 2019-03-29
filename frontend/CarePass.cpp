@@ -18,6 +18,14 @@
 
 using namespace llvm;
 
+bool isInductionVariable(Value *V, LoopInfo &LI) {
+  auto I = dyn_cast<PHINode>(V);
+  if (!I) return false;
+  auto BB = I->getParent();
+  auto L = LI.getLoopFor(BB);
+  return I == L->getCanonicalInductionVariable();
+}
+
 bool CarePass::isLoadFromAlloca(Value *V) {
   auto LI = dyn_cast<LoadInst>(V);
   if (!LI) return false;
@@ -210,6 +218,8 @@ bool CarePass::runOnModule(Module &M) {
     // if (F.getName() != "smooth") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
+    auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+
     // LivenessAnalysis LA(F, true);
     LivenessAnalysis LA(F);
 
@@ -271,7 +281,19 @@ bool CarePass::runOnModule(Module &M) {
           (pnames[pnames.size() - 1] + "[live: " +
            std::to_string(LA.isLiveAtPoint(cparams[pnames.size() - 1], &*I)) +
            "])\n");
-    }
+
+      DEBUG_WITH_TYPE("LIVE", {
+        dbgs() << "Recovery Kernel: " << kernel->getName();
+        for (unsigned i = 0; i < pnames.size(); i++) {
+          dbgs() << "\n\tParam[" << i << "]: " << pnames[i] << " ("
+                 << *cparams[i] << ") : Alive -- "
+                 << LA.isLiveAtPoint(cparams[i], &*I)
+                 << ", Induction Var: " << isInductionVariable(cparams[i], LI);
+        }
+        dbgs() << "\n\n";
+      });
+
+    }  // end of instruction iteration loop
 
     // Create DILocalVariable for referenced values if it doesnot have
     for (auto it = Variables.begin(); it != Variables.end(); it++) {

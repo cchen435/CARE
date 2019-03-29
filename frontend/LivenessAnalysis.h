@@ -23,10 +23,10 @@ class LivenessAnalysis {
   bool isLiveAtPoint(Value *V, Instruction *pos);
 
  private:
-#if 0
+#if INSTLA
   typedef std::map<Instruction *, std::set<Value *>> LivenessMap;
 #else
-  typedef std::map<BasicBlock *, std::set<Value *> > LivenessMap;
+  typedef std::map<BasicBlock *, std::set<Value *>> LivenessMap;
 #endif
   LivenessMap In, Out;
 
