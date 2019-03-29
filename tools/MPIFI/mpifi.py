@@ -125,7 +125,7 @@ def add_parser():
                       dest='faults', help='The json file for faults')
     parser.add_option('-n', '--nprocesses', type='int', dest='nprocesses',
                       help='number of processes')
-    parser.add_option('-m', '--machinefile', type='int', dest='hosts',
+    parser.add_option('-m', '--machinefile', type='string', dest='hosts',
                       help='the host file for mpi')
     return parser
 
@@ -137,6 +137,8 @@ def parse_arguments(args, opts):
     faults = opts['faults']
     assert(faults), "We expect a json file from pure injection experiments.\n"
     faults = Path(faults).absolute()
+    assert(faults.exists()), "We expect a json file from pure injection experiments.\n"
+    faults = str(faults)
 
     nprocesses = opts['nprocesses']
 
