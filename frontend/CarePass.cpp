@@ -313,7 +313,13 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    // if (F.getName() != "_ZNKSt4lessIiEclERKiS2_") continue;
+    if (F.getName() == "_Z8CommSendR6DomainiiPMS_FRdiEiiibb") continue;
+    if (F.getName() == "_Z7CommSBNR6DomainiPMS_FRdiE") continue;
+    if (F.getName() == "_Z14CommSyncPosVelR6Domain") continue;
+    if (F.getName() == "_Z9CommMonoQR6Domain") continue;
+    if (F.getName() ==
+        "_ZN6miniFE6driverIdiiEEiRK3BoxRS1_RNS_10ParametersER8YAML_Doc")
+      continue;
 
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
@@ -780,6 +786,10 @@ Value *CarePass::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
     case Instruction::PtrToInt:
       Inst = IRB.CreatePtrToInt(Operands[0],
                                 dyn_cast<PtrToIntInst>(Insn)->getDestTy());
+      break;
+    case Instruction::IntToPtr:
+      Inst = IRB.CreateIntToPtr(Operands[0],
+                                dyn_cast<IntToPtrInst>(Insn)->getDestTy());
       break;
     default:
       dbgs() << "Unsupported Instruction: " << *Insn << "\n";
