@@ -14,6 +14,8 @@
 
 using namespace llvm;
 
+#define INSTLA 1
+
 class LivenessAnalysis {
  public:
   LivenessAnalysis(Function &F, int DbgMode = false) {
