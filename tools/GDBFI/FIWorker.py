@@ -96,7 +96,7 @@ class FIWorker(mp.Process):
                     '\t[%s]: directory exists, and data could be overwritten.' % name, logging.WARNING)
             else:
                 wd.mkdir()
-            os.chdir(wd)
+            os.chdir(str(wd))
 
             # start the application and sleep for while, then pause the app
             # retry if attach to process failed
@@ -123,7 +123,7 @@ class FIWorker(mp.Process):
             # self.log_msg('\t[%s]: put record into the queue: %s' % (name, str(record)))
             self.log_msg('\t[%s]: put record into the queue.' % (name))
             self._queue.put(record)
-            os.chdir(self._expr_path)
+            os.chdir(str(self._expr_path))
 
         # sync before exit
         self.log_msg('finished job and exit')
