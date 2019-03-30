@@ -215,7 +215,7 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    // if (F.getName() != "smooth") continue;
+    if (F.getName() != "chargei") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
     auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
@@ -287,8 +287,8 @@ bool CarePass::runOnModule(Module &M) {
         for (unsigned i = 0; i < pnames.size(); i++) {
           dbgs() << "\n\tParam[" << i << "]: " << pnames[i] << " ("
                  << *cparams[i] << ") : Alive -- "
-                 << LA.isLiveAtPoint(cparams[i], &*I)
-                 << ", Induction Var: " << isInductionVariable(cparams[i], LI);
+                 << LA.isLiveAtPoint(cparams[i], &*I);
+          //<< ", Induction Var: " << isInductionVariable(cparams[i], LI);
         }
         dbgs() << "\n\n";
       });
