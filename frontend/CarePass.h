@@ -55,6 +55,7 @@ struct CarePass : public ModulePass {
   bool isCallingSimpleKernel(CallInst *CI);
   bool isMath(CallInst *CI);
   bool isMemAlloc(CallInst *CI);
+  bool isTerminalValue(Value *);
   bool isLoadFromAlloca(Value *V);
   bool isStoreToAlloca(Value *V);
   bool isMemAccInst(Instruction *Insn);
@@ -75,7 +76,10 @@ struct CarePass : public ModulePass {
    * It will also return the return type of the recovery kernel
    * FIXME: is it save to assume PHINode as Params ?
    */
-  Type *getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
+  int getParams(Instruction *I, LivenessAnalysis &LA,
+                std::set<Value *> &Params);
+  Type *getParamsAndStmts(Instruction *I, LivenessAnalysis &LA,
+                          std::set<Value *> &Params,
                           std::vector<Value *> &Stmts);
 
   /**
@@ -83,7 +87,8 @@ struct CarePass : public ModulePass {
    * we should create the dbg.value instrinsice for each of them to indicate
    * the location of these objects
    */
-  std::pair<Function *, std::set<Value *>> buildRecoveryKernel(Instruction *I);
+  std::pair<Function *, std::set<Value *>> buildRecoveryKernel(
+      Instruction *I, LivenessAnalysis &LA);
 
   Function *createFunction(Type *RetTy, std::set<Value *> Params,
                            std::vector<Value *> Stmts);

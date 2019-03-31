@@ -18,12 +18,9 @@
 
 using namespace llvm;
 
-bool isInductionVariable(Value *V, LoopInfo &LI) {
-  auto I = dyn_cast<PHINode>(V);
-  if (!I) return false;
-  auto BB = I->getParent();
-  auto L = LI.getLoopFor(BB);
-  return I == L->getCanonicalInductionVariable();
+bool CarePass::isTerminalValue(Value *V) {
+  return isa<AllocaInst>(V) || isa<Argument>(V) || isa<PHINode>(V) ||
+         isa<GlobalVariable>(V) || isLoadFromAlloca(V) || isStoreToAlloca(V);
 }
 
 bool CarePass::isLoadFromAlloca(Value *V) {
@@ -218,8 +215,6 @@ bool CarePass::runOnModule(Module &M) {
     if (F.getName() != "chargei") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
-    auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-
     // LivenessAnalysis LA(F, true);
     LivenessAnalysis LA(F);
 
@@ -237,7 +232,7 @@ bool CarePass::runOnModule(Module &M) {
       // build the recovery kernel for the function
       Function *kernel;
       std::set<Value *> params;
-      std::tie(kernel, params) = buildRecoveryKernel(&*I);
+      std::tie(kernel, params) = buildRecoveryKernel(&*I, LA);
 
       if (!kernel) continue;
 
@@ -288,7 +283,6 @@ bool CarePass::runOnModule(Module &M) {
           dbgs() << "\n\tParam[" << i << "]: " << pnames[i] << " ("
                  << *cparams[i] << ") : Alive -- "
                  << LA.isLiveAtPoint(cparams[i], &*I);
-          //<< ", Induction Var: " << isInductionVariable(cparams[i], LI);
         }
         dbgs() << "\n\n";
       });
@@ -339,18 +333,19 @@ bool CarePass::runOnModule(Module &M) {
 }
 
 std::pair<Function *, std::set<Value *>> CarePass::buildRecoveryKernel(
-    Instruction *Insn) {
+    Instruction *Insn, LivenessAnalysis &LA) {
   std::vector<Value *> Stmts;
   std::set<Value *> Params;
   DEBUG_WITH_TYPE(
       "RK", dbgs() << "\n\n\nBuild recovery kernel for: " << *Insn << "\n");
 
-  Type *RetTy = getParamsAndStmts(Insn, Params, Stmts);
+  Type *RetTy = getParamsAndStmts(Insn, LA, Params, Stmts);
   Function *RK = createFunction(RetTy, Params, Stmts);
   return std::make_pair(RK, Params);
 }
 
-Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
+Type *CarePass::getParamsAndStmts(Instruction *I, LivenessAnalysis &LA,
+                                  std::set<Value *> &Params,
                                   std::vector<Value *> &Stmts) {
   std::vector<Value *> Workspace;
 
@@ -363,15 +358,13 @@ Type *CarePass::getParamsAndStmts(Instruction *I, std::set<Value *> &Params,
   while (Workspace.size()) {
     Value *V = Workspace.back();
     Workspace.pop_back();
+
     if (isStdlibVariable(V)) {
       dbgs() << "External Variable" << *V << "\n";
       // processing the case of library (external) variables, e.g. stdout,
       // stderr, errno etc.
       continue;
-    } else if (isa<AllocaInst>(V) || isa<Argument>(V) || isa<PHINode>(V) ||
-               isa<GlobalValue>(V)) {
-      Params.insert(V);
-    } else if (isLoadFromAlloca(V) || isStoreToAlloca(V)) {
+    } else if (isTerminalValue(V)) {
       Params.insert(V);
     } else if (auto CI = dyn_cast<CallInst>(V)) {
       if (!isCallingSimpleKernel(CI)) {
