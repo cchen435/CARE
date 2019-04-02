@@ -206,9 +206,9 @@ std::set<Instruction *> LivenessAnalysis::getSuccessors(Instruction *I) {
 }
 
 #if INSTLA
-bool LivenessAnalysis::isLiveAtPoint(Value *V, Instruction *pos) {
-  if (Out.find(pos) == Out.end()) return false;
-  if (Out[pos].find(V) == Out[pos].end()) return false;
+bool LivenessAnalysis::isLiveAt(Value *V, Instruction *pos) {
+  if (In.find(pos) == In.end()) return false;
+  if (In[pos].find(V) == In[pos].end()) return false;
   return true;
 }
 #else

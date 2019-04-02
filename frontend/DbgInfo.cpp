@@ -123,6 +123,8 @@ DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, std::string VName,
   int Line = getLineNumber();
   int Col = getColNumber();
 
+  dbgs() << "Create DbgIntrinsic for : " << *V << "\n";
+
   VDITy = getOrCreateDIType(V->getType());
 
   if (auto Insn = dyn_cast<Instruction>(V)) {
@@ -142,9 +144,8 @@ DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, std::string VName,
   const DILocation *DL = DebugLoc::get(Line, Col, Scope);
 
   Instruction *dbg = DBuilder->insertDbgValueIntrinsic(V, D, DIExpr, DL, pos);
-  dbgs() << "Create DbgIntrinsic for : " << *V << "\n";
-  dbgs() << "\t" << *dbg << "\n";
-  dbgs() << "\t" << *D << "\n";
+  dbgs() << "\tIntrinsic: " << *dbg << "\n";
+  dbgs() << "\tVariable:" << *D << "\n";
 
   if (auto PHI = dyn_cast<PHINode>(V)) {
     dbg = DBuilder->insertDbgValueIntrinsic(PHI->getIncomingValue(0), D, DIExpr,
@@ -315,16 +316,6 @@ DebugLoc CAREDIBuilder::getOrCreateDebugLoc(Instruction *Insn, DIScope *Scope) {
   } else {
     loc = setDIDebugLoc(Insn, Scope);
   }
-
-  // promote the debug data to some of its users
-  // since in x86 architecture, the some operation could
-  // be merged with a memort access instruction
-  for (auto U : Insn->users()) {
-    if (auto I = dyn_cast<BinaryOperator>(U)) I->setDebugLoc(loc);
-    if (auto I = dyn_cast<CastInst>(U)) I->setDebugLoc(loc);
-    if (auto I = dyn_cast<CmpInst>(U)) I->setDebugLoc(loc);
-  }
-
   return loc;
 }
 

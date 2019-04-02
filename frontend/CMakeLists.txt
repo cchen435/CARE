@@ -1,5 +1,6 @@
 add_library(CAREPass MODULE
     # List your source files here.
+    RKB.cpp
     CarePass.cpp
     DbgInfo.cpp
     LivenessAnalysis.cpp
@@ -15,6 +16,7 @@ link_directories(
 target_link_libraries(CAREPass rtable mhash stdc++fs)
 
 set_target_properties(CAREPass PROPERTIES
+    COMPILE_FLAGS "-g"
     LINK_FLAGS "-lstdc++fs"
 )
 

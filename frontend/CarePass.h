@@ -10,9 +10,8 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
-#include <mhash.h>
-
 #include "DbgInfo.h"
+#include "LivenessAnalysis.h"
 
 using namespace llvm;
 
@@ -52,15 +51,7 @@ struct CarePass : public ModulePass {
 
  private:
   void initialize(Module &M);
-  bool isCallingSimpleKernel(CallInst *CI);
-  bool isMath(CallInst *CI);
-  bool isMemAlloc(CallInst *CI);
-  bool isTerminalValue(Value *);
-  bool isLoadFromAlloca(Value *V);
-  bool isStoreToAlloca(Value *V);
-  bool isMemAccInst(Instruction *Insn);
-  bool isStdlibVariable(Value *V);
-  Value *getPointerOperand(Instruction *Insn);
+  bool isRecoverableMemAccInst(Instruction *I);
 
   /**
    * when the program is compiled with -g flag this method is
@@ -102,13 +93,6 @@ struct CarePass : public ModulePass {
       return "care_recover_k" + std::to_string(++i);
   };
 
-  /**
-   * get the human readable name for the value. if value have original
-   * name from source code, we will use that one, otherwise a fake one
-   * will be generated.
-   */
-  std::string getOrCreateValueName(Value *V);
-  std::string getFilename(StringRef filename);
   std::string getKey(DebugLoc Loc);
 
   /**

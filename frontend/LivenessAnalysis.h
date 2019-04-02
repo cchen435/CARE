@@ -22,7 +22,10 @@ class LivenessAnalysis {
     if (!DbgMode) doLivenessAnalysis(F);
   };
 
-  bool isLiveAtPoint(Value *V, Instruction *pos);
+  /**
+   * it is to check whether the Value V is live at Value P;
+   */
+  bool isLiveAt(Value *V, Instruction *pos);
 
  private:
 #if INSTLA
