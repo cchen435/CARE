@@ -83,5 +83,5 @@ fexit:  // exit with failure
   // clean the library
   fprintf(stderr, "CARE: Failed to recover the failure.\n\n");
   care_util_finish(&ctx);
-  exit(signo);
+  exit(-signo);
 }

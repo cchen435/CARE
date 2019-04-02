@@ -26,7 +26,8 @@ void care_err_set_code(care_error_t err) {
 }
 
 void care_err_set_external_msg(char* msg) {
-  if (!care_err_get_errmsg) care_error_external_msg = strdup(msg);
+  if (care_error_external_msg) free(care_error_external_msg);
+  care_error_external_msg = strdup(msg);
 }
 
 char* care_err_get_errmsg() {
