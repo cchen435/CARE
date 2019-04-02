@@ -71,6 +71,9 @@ DIType *CAREDIBuilder::createDIType(Type *Ty) {
     auto ElemTy = ArrayTy->getArrayElementType();
     int size = ArrayTy->getArrayNumElements();
     ret = DBuilder->createArrayType(size, 0, getOrCreateDIType(ElemTy));
+  } else if (Ty->isStructTy()) {
+    auto StructTy = dyn_cast<StructType>(Ty);
+    StructTy->get
   } else {
     dbgs() << "unhandeled Type:" << *Ty << "\n";
     exit(EXIT_FAILURE);
