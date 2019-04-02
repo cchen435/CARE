@@ -66,8 +66,13 @@ DIType *CAREDIBuilder::createDIType(Type *Ty) {
   } else if (Ty->isPointerTy()) {
     ret = DBuilder->createPointerType(createDIType(Ty->getPointerElementType()),
                                       64, 64);
+  } else if (Ty->isArrayTy()) {
+    auto ArrayTy = dyn_cast<ArrayType>(Ty);
+    auto ElemTy = ArrayTy->getArrayElementType();
+    int size = ArrayTy->getArrayNumElements();
+    ret = DBuilder->createArrayType(size, 0, getOrCreateDIType(ElemTy));
   } else {
-    dbgs() << "unhandlered Type:" << *Ty << "\n";
+    dbgs() << "unhandeled Type:" << *Ty << "\n";
     exit(EXIT_FAILURE);
   }
   return ret;
