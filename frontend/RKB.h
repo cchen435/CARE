@@ -6,6 +6,7 @@
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/NoFolder.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
@@ -55,10 +56,13 @@ class RKBuilder {
 
  private:
   std::string getKernelName();
-  void getParams(std::set<Value *> &Params);
+  void resolveConstantExpr(ConstantExpr *Expr, std::vector<Value *> &Oprs);
+  std::vector<Value *> getOperands(Instruction *Insn);
+  int getParams(std::set<Value *> &Params);
   void getStmts(std::set<Value *> Params, std::vector<Value *> &Stmts);
   FunctionType *getFunctionType(std::set<Value *> Params);
-  Value *createInstruction(IRBuilder<> &IRB, Instruction *Insn,
+  Value *createConstantExpr(IRBuilder<NoFolder> &IRB, ConstantExpr *Expr);
+  Value *createInstruction(IRBuilder<NoFolder> &IRB, Instruction *Insn,
                            std::vector<Value *> Operands);
   Function *createRecoveryKernel(std::set<Value *> Params,
                                  std::vector<Value *> Stmts);

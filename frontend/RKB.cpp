@@ -1,13 +1,12 @@
-#include <llvm/IR/InstIterator.h>
-#include <llvm/Support/Debug.h>
-
 #include <llvm/ADT/Statistic.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
@@ -20,6 +19,7 @@
 STATISTIC(Total, "The # of kernels");
 STATISTIC(Empty, "The # of empty kernels");
 STATISTIC(Average, "The # of Instructions (avg)");
+STATISTIC(Unlives, "The # of Unlive kernels with Unlives");
 
 std::string getFilename(StringRef filename) {
   std::experimental::filesystem::path p = filename.str();
@@ -80,7 +80,7 @@ RKBuilder::RKBuilder(Instruction *MemAccInst, LivenessAnalysis &LA,
 }
 
 bool RKBuilder::isLive(Value *V) {
-  if (isa<Argument>(V) || isa<ConstantData>(V)) return true;
+  if (isa<Argument>(V) || isa<Constant>(V) || isa<AllocaInst>(V)) return true;
   return LA.isLiveAt(V, MemAccInst);
 }
 
@@ -136,25 +136,25 @@ bool RKBuilder::isExpandable(Value *V) {
   Expandable[V] = true;
   if (isTerminalValue(V)) {
     Expandable[V] = false;
-  } else {
-    auto Insn = dyn_cast<Instruction>(V);
-    if (!Insn) {
-      Expandable[V] = false;
-    } else if (isa<CallInst>(V) &&
-               !isCallingSimpleKernel(dyn_cast<CallInst>(V))) {
+  } else if (auto Insn = dyn_cast<Instruction>(V)) {
+    if (isa<CallInst>(V) && !isCallingSimpleKernel(dyn_cast<CallInst>(V))) {
       Expandable[V] = false;
     } else {
-      for (auto i = 0; i < Insn->getNumOperands(); i++) {
-        Value *op = Insn->getOperand(i);
-        // Constant could be a ConstantData, e.g., COnstantInt, ConstantFP,
-        // or a GlobalValue, e.g. Function, GlobalVariable etc.
-        if (isa<Constant>(op)) continue;
-        if (!isLive(op) && !isExpandable(op)) {
+      auto oprs = getOperands(Insn);
+      for (auto i = 0; i < oprs.size(); i++) {
+        Value *op = oprs[i];
+
+        if (isa<Constant>(op))
+          continue;
+        else if (!isLive(op) && !isExpandable(op)) {
           Expandable[V] = false;
           break;
         }
       }
     }
+  } else {
+    dbgs() << "isExpandable on non terminal and inst value: " << V << "\n";
+    Expandable[V] = false;
   }
   return Expandable[V];
 }
@@ -188,7 +188,31 @@ std::string RKBuilder::getKernelName() {
     return "care_recover_k" + std::to_string(++i);
 }
 
-void RKBuilder::getParams(std::set<Value *> &Params) {
+void RKBuilder::resolveConstantExpr(ConstantExpr *Expr,
+                                    std::vector<Value *> &Oprs) {
+  for (unsigned i = 0; i < Expr->getNumOperands(); i++) {
+    auto Op = Expr->getOperand(i);
+    if (auto SExpr = dyn_cast<ConstantExpr>(Op))
+      resolveConstantExpr(SExpr, Oprs);
+    else
+      Oprs.push_back(Op);
+  }
+}
+
+std::vector<Value *> RKBuilder::getOperands(Instruction *Insn) {
+  std::vector<Value *> result;
+  for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
+    auto Op = Insn->getOperand(i);
+    if (auto Expr = dyn_cast<ConstantExpr>(Op))
+      resolveConstantExpr(Expr, result);
+    else
+      result.push_back(Op);
+  }
+  return result;
+}
+
+int RKBuilder::getParams(std::set<Value *> &Params) {
+  int ret = 0;
   std::vector<Value *> Workspace;
   Value *Addr = getPointerOperand(MemAccInst);
   Workspace.insert(Workspace.begin(), Addr);
@@ -196,24 +220,34 @@ void RKBuilder::getParams(std::set<Value *> &Params) {
     Value *V = Workspace.back();
     Workspace.pop_back();
 
-    if (isExpandable(V)) {  // Expandable Value is also an Instruction
+    if (isExpandable(V) ||
+        isa<GetElementPtrInst>(V)) {  // Expandable Value is also an Instruction
       auto I = dyn_cast<Instruction>(V);
-      for (unsigned i = 0; i < I->getNumOperands(); i++) {
-        Value *Op = I->getOperand(i);
-        if (isa<Constant>(Op) && !isa<GlobalVariable>(Op)) continue;
-        Workspace.insert(Workspace.begin(), Op);
+      auto oprs = getOperands(I);
+      for (unsigned i = 0; i < oprs.size(); i++) {
+        auto Op = oprs[i];
+        if (isa<ConstantData>(Op) || isa<ConstantAggregate>(Op) ||
+            isa<Function>(Op))
+          continue;
+        else
+          Workspace.insert(Workspace.begin(), Op);
       }
     } else if (isStdlibVariable(V)) {
+      auto Res = CareM->getOrInsertGlobal(V->getName(), V->getType());
+      dbgs() << "getOrInsertGlobal for: " << *V << "\n\tName: " << V->getName()
+             << "\n\tType: " << *V->getType() << "\n\tRes" << *Res << "\n";
       continue;
     } else {
       Params.insert(V);
       if (!isLive(V) && !isa<GlobalValue>(V)) {
         dbgs() << "getParams meet an unlive and unexpandable value: " << *V
-               << "\tMemAccInst: " << MemAccInst << "\n";
-        llvm_unreachable("Unconsidered Value");
+               << "\tMemAccInst: " << *MemAccInst << "\n";
+        // llvm_unreachable("Unconsidered Value");
+        ret++;
       }
     }
   }
+  return ret;
 }
 
 void RKBuilder::getStmts(std::set<Value *> Params,
@@ -228,20 +262,20 @@ void RKBuilder::getStmts(std::set<Value *> Params,
 
     if (Params.find(V) != Params.end())
       continue;
-    else {
+    else if (auto I = dyn_cast<Instruction>(V)) {
       Stmts.push_back(V);
-      auto I = dyn_cast<Instruction>(V);
-      if (!I) {
-        dbgs() << "Meet a non-instruction value in stmts: " << *V << "\n";
-        llvm_unreachable("Error");
-      }
-      for (unsigned i = 0; i < I->getNumOperands(); i++) {
-        Value *Op = I->getOperand(i);
-        if (isa<Constant>(Op) && !isa<GlobalVariable>(Op) ||
-            isStdlibVariable(Op))
+      auto oprs = getOperands(I);
+      for (unsigned i = 0; i < oprs.size(); i++) {
+        Value *Op = oprs[i];
+        if (isa<ConstantData>(Op) || isa<ConstantAggregate>(Op) ||
+            isa<Function>(Op) || isStdlibVariable(Op))
           continue;
-        Workspace.insert(Workspace.begin(), Op);
+        else
+          Workspace.insert(Workspace.begin(), Op);
       }
+    } else {
+      dbgs() << "Meet a non-instruction value in stmts: " << *V << "\n";
+      llvm_unreachable("Error");
     }
   }
   std::reverse(Stmts.begin(), Stmts.end());
@@ -262,7 +296,38 @@ FunctionType *RKBuilder::getFunctionType(std::set<Value *> Params) {
   return FunctionType::get(RetTy, ParamTys, false /* VarArg */);
 }
 
-Value *RKBuilder::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
+Value *RKBuilder::createConstantExpr(IRBuilder<NoFolder> &IRB,
+                                     ConstantExpr *Expr) {
+  std::vector<Value *> Operands;
+  Value *ret;
+  for (unsigned i = 0; i < Expr->getNumOperands(); i++) {
+    Value *op = Expr->getOperand(i);
+    if (auto SExpr = dyn_cast<ConstantExpr>(op))
+      op = createConstantExpr(IRB, SExpr);
+    else if (isStdlibVariable(op))
+      op = CareM->getOrInsertGlobal(op->getName(), op->getType());
+    else {
+      dbgs() << "createConstantExpr meet unprocessed operands in Expr: " << *op
+             << "\n";
+      llvm_unreachable("Unsupported\n");
+    }
+    Operands.push_back(op);
+  }
+  switch (Expr->getOpcode()) {
+    case Instruction::BitCast:
+      ret = IRB.CreateBitCast(Operands[0],
+                              dyn_cast<BitCastOperator>(Expr)->getDestTy());
+      break;
+    default:
+      dbgs() << "createConstantExpr meet an upsupported Opcode: " << *Expr
+             << "\n";
+      llvm_unreachable("Unsupported Opcode");
+      break;
+  }
+  return ret;
+}
+
+Value *RKBuilder::createInstruction(IRBuilder<NoFolder> &IRB, Instruction *Insn,
                                     std::vector<Value *> Operands) {
   Value *Inst;
   Function *Callee;
@@ -375,6 +440,10 @@ Value *RKBuilder::createInstruction(IRBuilder<> &IRB, Instruction *Insn,
       Inst = IRB.CreatePtrToInt(Operands[0],
                                 dyn_cast<PtrToIntInst>(Insn)->getDestTy());
       break;
+    case Instruction::IntToPtr:
+      Inst = IRB.CreateIntToPtr(Operands[0],
+                                dyn_cast<IntToPtrInst>(Insn)->getDestTy());
+      break;
     default:
       dbgs() << "Unsupported Instruction: " << *Insn << "\n";
       for (unsigned i = 0; i < Operands.size(); i++) {
@@ -431,12 +500,13 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
 
   DEBUG_WITH_TYPE("RK", dbgs() << "Insert/Copying Instructions:\n");
   BasicBlock *BB = BasicBlock::Create(CareM->getContext(), "entry", RK);
-  IRBuilder<> IRB(BB);
+  IRBuilder<NoFolder> IRB(BB);
   for (Value *V : Stmts) {
     // avoid duplications, since vector is used when retrieving
     // computing instructions
     if (VMap.find(V) != VMap.end()) continue;
-    DEBUG_WITH_TYPE("RK", dbgs() << "Working on inst :" << *V << "\n");
+
+    DEBUG_WITH_TYPE("RK", dbgs() << "Working on Inst :" << *V << "\n");
 
     auto Insn = dyn_cast<Instruction>(V);
     if (!Insn) {
@@ -453,8 +523,12 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
     if (auto CI = dyn_cast<CallInst>(Insn)) {
       for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
         Value *Op = CI->getArgOperand(i);
-        if (isa<Constant>(Op) &&
-            (isStdlibVariable(V) || !isa<GlobalVariable>(Op))) {
+        if (auto CExpr = dyn_cast<ConstantExpr>(Op)) {
+          Operands.push_back(createConstantExpr(IRB, CExpr));
+        } else if (isStdlibVariable(Op)) {
+          auto GV = CareM->getOrInsertGlobal(Op->getName(), Op->getType());
+          Operands.push_back(GV);
+        } else if (isa<ConstantData>(Op) || isa<ConstantAggregate>(Op)) {
           Operands.push_back(Op);
         } else if (VMap.find(Op) != VMap.end()) {
           Operands.push_back(VMap[Op]);
@@ -467,9 +541,12 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
     } else
       for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
         Value *Op = Insn->getOperand(i);
-        // if (isa<Constant>(Op) && !isa<GlobalValue>(Op)) {
-        if (isa<Constant>(Op) &&
-            (isStdlibVariable(V) || !isa<GlobalVariable>(Op))) {
+        if (auto CExpr = dyn_cast<ConstantExpr>(Op)) {
+          Operands.push_back(createConstantExpr(IRB, CExpr));
+        } else if (isStdlibVariable(Op)) {
+          auto GV = CareM->getOrInsertGlobal(Op->getName(), Op->getType());
+          Operands.push_back(GV);
+        } else if (isa<ConstantData>(Op) || isa<ConstantAggregate>(Op)) {
           Operands.push_back(Op);
         } else if (VMap.find(Op) != VMap.end()) {
           Operands.push_back(VMap[Op]);
@@ -482,7 +559,6 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
 
     // create the instruction
     Value *Inst = createInstruction(IRB, Insn, Operands);
-
     VMap[Insn] = Inst;
   }
 
@@ -511,7 +587,8 @@ bool RKBuilder::build() {
     dbgs() << "\t1. getParams\n";
   });
   Total++;
-  getParams(Params);
+  int ret = getParams(Params);
+  if (ret) Unlives++;
 
   DEBUG_WITH_TYPE("RK", { dbgs() << "\t2. getStmts\n"; });
 
@@ -533,9 +610,9 @@ bool RKBuilder::build() {
     for (unsigned i = 0; i < Stmts.size(); i++) {
       dbgs() << "\t\tStmt[" << i << "]: " << *Stmts[i] << "\n";
     }
-    dbgs() << "\n\n\n";
   });
   RK = createRecoveryKernel(Params, Stmts);
+  DEBUG_WITH_TYPE("RK", dbgs() << "\n\n\n");
 }
 
 std::string RKBuilder::getRawRecord(DebugLoc loc) {
@@ -549,6 +626,7 @@ std::string RKBuilder::getRawRecord(DebugLoc loc) {
     auto name = it->getName().str();
     res += (name + ", ");
   }
-  res[res.size() - 1] = ')';
+  res[res.size() - 2] = ')';
+  res[res.size() - 1] = '\n';
   return res;
 }

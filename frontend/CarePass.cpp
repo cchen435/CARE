@@ -3,6 +3,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Operator.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileSystem.h>
 
@@ -24,7 +25,9 @@ bool CarePass::isRecoverableMemAccInst(Instruction *I) {
   if (!isa<StoreInst>(I) && !isa<LoadInst>(I)) return false;
   auto Addr = getPointerOperand(I);
   if (isa<CastInst>(Addr)) Addr = dyn_cast<CastInst>(Addr)->getOperand(0);
-  if (isa<AllocaInst>(Addr) || isa<GlobalVariable>(Addr)) return false;
+  if (isa<AllocaInst>(Addr) || isa<GlobalVariable>(Addr) ||
+      isa<ConstantExpr>(Addr))
+    return false;
   return true;
 }
 
@@ -85,7 +88,9 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    // if (F.getName() != "chargei") continue;
+    // if (F.getName() !=
+    //    "_ZN6miniFE6driverIdiiEEiRK3BoxRS1_RNS_10ParametersER8YAML_Doc")
+    //  continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
     LivenessAnalysis LA(F);
@@ -145,13 +150,7 @@ bool CarePass::runOnModule(Module &M) {
   std::error_code EC;
   std::experimental::filesystem::path p =
       M.getName().split('/').second.split('.').first.str();
-  std::string program = p.filename();
-  std::string FileName = "lib" + program + "_care.bc";
-
-  dbgs() << "Writing CareM module to " << FileName << "\n";
-  llvm::raw_fd_ostream OS(FileName, EC, llvm::sys::fs::F_None);
-  WriteBitcodeToFile(CareM, OS);
-  OS.flush();
+  std::string FileName, program = p.filename();
 
   // save recovery table
   FileName = program + "_care.tb";
@@ -163,7 +162,14 @@ bool CarePass::runOnModule(Module &M) {
   rkraw << rktable;
   rkraw.close();
 
+  dbgs() << "Writing CareM module\n";
+  FileName = "lib" + program + "_care.bc";
+  llvm::raw_fd_ostream OS(FileName, EC, llvm::sys::fs::F_None);
+  WriteBitcodeToFile(CareM, OS);
+  OS.flush();
+
   care_tb_release(rtb);
+
   return true;
 }
 

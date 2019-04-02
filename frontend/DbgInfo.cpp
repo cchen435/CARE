@@ -67,13 +67,9 @@ DIType *CAREDIBuilder::createDIType(Type *Ty) {
     ret = DBuilder->createPointerType(createDIType(Ty->getPointerElementType()),
                                       64, 64);
   } else if (Ty->isArrayTy()) {
-    auto ArrayTy = dyn_cast<ArrayType>(Ty);
-    auto ElemTy = ArrayTy->getArrayElementType();
-    int size = ArrayTy->getArrayNumElements();
-    ret = DBuilder->createArrayType(size, 0, getOrCreateDIType(ElemTy));
+    ret = DBuilder->createBasicType("char", 8, dwarf::DW_ATE_signed_char);
   } else if (Ty->isStructTy()) {
-    auto StructTy = dyn_cast<StructType>(Ty);
-    StructTy->get
+    ret = DBuilder->createBasicType("char", 8, dwarf::DW_ATE_signed_char);
   } else {
     dbgs() << "unhandeled Type:" << *Ty << "\n";
     exit(EXIT_FAILURE);
@@ -131,14 +127,13 @@ DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, std::string VName,
   int Line = getLineNumber();
   int Col = getColNumber();
 
-  dbgs() << "Create DbgIntrinsic for : " << *V << "\n";
-
   VDITy = getOrCreateDIType(V->getType());
 
   if (auto Insn = dyn_cast<Instruction>(V)) {
     D = DBuilder->createAutoVariable(Scope, VName, Scope->getFile(), Line,
                                      VDITy, true);
     pos = Insn->getNextNode();
+    while (isa<PHINode>(pos)) pos = pos->getNextNode();
   } else if (auto arg = dyn_cast<Argument>(V)) {
     int ArgNo = arg->getArgNo() + 1;
     D = DBuilder->createParameterVariable(Scope, VName, ArgNo, Scope->getFile(),
@@ -152,18 +147,12 @@ DILocalVariable *CAREDIBuilder::createDIVariable(Value *V, std::string VName,
   const DILocation *DL = DebugLoc::get(Line, Col, Scope);
 
   Instruction *dbg = DBuilder->insertDbgValueIntrinsic(V, D, DIExpr, DL, pos);
-  dbgs() << "\tIntrinsic: " << *dbg << "\n";
-  dbgs() << "\tVariable:" << *D << "\n";
 
   if (auto PHI = dyn_cast<PHINode>(V)) {
     dbg = DBuilder->insertDbgValueIntrinsic(PHI->getIncomingValue(0), D, DIExpr,
                                             DL, pos);
-    dbgs() << "Posting DbgIntrinsic to : " << *PHI->getIncomingValue(0) << "\n";
-    dbgs() << "\tDbgIntrinsic" << *dbg << "\n";
     dbg = DBuilder->insertDbgValueIntrinsic(PHI->getIncomingValue(1), D, DIExpr,
                                             DL, pos);
-    dbgs() << "Posting DbgIntrinsic to : " << *PHI->getIncomingValue(1) << "\n";
-    dbgs() << "\t" << *dbg << "\n\n\n";
   }
   return D;
 }
