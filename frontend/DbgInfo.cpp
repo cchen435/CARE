@@ -20,7 +20,6 @@ CAREDIBuilder::CAREDIBuilder(Module &M, int lang) : M(M), LANG(lang) {
   hasDebugInfo = M.getDwarfVersion() ? true : false;
   if (hasDebugInfo) {
     resolveConflictDbgInfo(M);
-    getDbgInfo(M);
   } else {
     M.addModuleFlag(Module::Warning, "Dwarf Version", dwarf::DWARF_VERSION);
     M.addModuleFlag(Module::Warning, "Debug Info Version",
@@ -166,40 +165,44 @@ DIType *CAREDIBuilder::getOrCreateDIType(Type *Ty) {
 
 // ------------------------------------------------------------------------- //
 
-void CAREDIBuilder::getDbgInfo(Module &M) {
-  Module::FunctionListType &funcs = M.getFunctionList();
-  for (Module::FunctionListType::iterator it = funcs.begin(), end = funcs.end();
-       it != end; it++) {
-    Function &F = *it;
+void CAREDIBuilder::getDbgInfo(Function &F) {
+  DbgValueMap.clear();
 
-    if (F.isDeclaration() || F.isIntrinsic()) continue;
-    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
-      if (auto DbgInst = dyn_cast<DbgInfoIntrinsic>(&*I)) {
-        DEBUG_WITH_TYPE("DBG", {
-          llvm::dbgs() << "Instruction: " << *DbgInst << "\t Ops: ";
-          for (unsigned i = 0; i < DbgInst->getNumArgOperands(); i++)
-            llvm::dbgs() << "\n\t" << *(DbgInst->getArgOperand(i));
-          llvm::dbgs() << "\n\n";
-        });
+  if (F.isDeclaration() || F.isIntrinsic()) return;
+  for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
+    if (auto DbgInst = dyn_cast<DbgInfoIntrinsic>(&*I)) {
+      DEBUG_WITH_TYPE("DBG", {
+        llvm::dbgs() << "Instruction: " << *DbgInst << "\t Ops: ";
+        for (unsigned i = 0; i < DbgInst->getNumArgOperands(); i++)
+          llvm::dbgs() << "\n\t" << *(DbgInst->getArgOperand(i));
+        llvm::dbgs() << "\n\n";
+      });
 
-        if (!isa<DbgDeclareInst>(&*I) && !isa<DbgValueInst>(&*I) &&
-            !isa<DbgAddrIntrinsic>(&*I)) {
-          dbgs() << "Unprocessed DbgInfoIntrinsic: " << *I << "\n";
-          llvm_unreachable("Unprocessed DbgInfoIntrinsic\n");
+      if (!isa<DbgDeclareInst>(&*I) && !isa<DbgValueInst>(&*I) &&
+          !isa<DbgAddrIntrinsic>(&*I)) {
+        dbgs() << "Unprocessed DbgInfoIntrinsic: " << *I << "\n";
+        llvm_unreachable("Unprocessed DbgInfoIntrinsic\n");
+      }
+
+      Value *V = DbgInst->getVariableLocation();
+      DILocalVariable *Var = DbgInst->getVariable();
+
+      if (isa<Argument>(V) && !Var->isParameter()) continue;
+
+      if (V && DbgValueMap.find(V) == DbgValueMap.end()) {  // in some cases
+        DbgValueMap[V] = DbgInst;
+        // if the value is simply a cast, the original operand refers to the
+        // same object
+        if (auto Cast = dyn_cast<BitCastInst>(V))
+          DbgValueMap[Cast->getOperand(0)] = DbgInst;
+
+        for (auto U : V->users()) {
+          if (isa<PHINode>(U)) DbgValueMap[U] = DbgInst;
         }
-
-        Value *V = DbgInst->getVariableLocation();
-        if (V) {  // in some cases
-          DbgValueMap[V] = DbgInst;
-          // if the value is simply a cast, the original operand refers to the
-          // same object
-          if (auto Cast = dyn_cast<BitCastInst>(V))
-            DbgValueMap[Cast->getOperand(0)] = DbgInst;
-
-          for (auto U : V->users()) {
-            if (isa<PHINode>(U)) DbgValueMap[U] = DbgInst;
-          }
-        }
+      } else if (!V) {
+        dbgs() << "Confilct DbgValue for " << *V
+               << "\n\tOld: " << *DbgValueMap[V] << "\n\tNew: " << *DbgInst
+               << "\n";
       }
     }
   }

@@ -44,11 +44,19 @@ Value *getPointerOperand(Instruction *Insn) {
 
 std::string getOrCreateValueName(CAREDIBuilder *DIB, Value *V) {
   std::string name;
+
   /* we are using the value of a variable */
   if (isa<LoadInst>(V)) V = dyn_cast<LoadInst>(V)->getPointerOperand();
   if (isa<StoreInst>(V)) V = dyn_cast<StoreInst>(V)->getPointerOperand();
 
-  if (auto DbgInst = DIB->getDbgInfoIntrinsic(V)) {
+  if (auto GV = dyn_cast<GlobalVariable>(V)) {
+    SmallVector<DIGlobalVariableExpression *, 8> GVE;
+    GV->getDebugInfo(GVE);
+    if (GVE.size() > 1)
+      dbgs() << "GlobalVariable have more then 1 DbgInfo: " << *V << "\n";
+    auto DIGV = GVE[0]->getVariable();
+    name = DIGV->getDisplayName();
+  } else if (auto DbgInst = DIB->getDbgInfoIntrinsic(V)) {
     DILocalVariable *Var;
     if (isa<DbgValueInst>(DbgInst))
       Var = dyn_cast<DbgValueInst>(DbgInst)->getVariable();
@@ -219,11 +227,11 @@ int RKBuilder::getParams(std::set<Value *> &Params) {
   Workspace.clear();
   Value *Addr = getPointerOperand(MemAccInst);
   Workspace.insert(Workspace.begin(), Addr);
-  dbgs() << "getParams for : " << *MemAccInst;
+  // dbgs() << "getParams for : " << *MemAccInst;
   while (Workspace.size()) {
     Value *V = Workspace.back();
     Workspace.pop_back();
-    dbgs() << "\n\tChecking : " << *V;
+    // dbgs() << "\n\tChecking : " << *V;
 
     if (isExpandable(V) ||
         isa<GetElementPtrInst>(V)) {  // Expandable Value is also an Instruction
@@ -252,7 +260,7 @@ int RKBuilder::getParams(std::set<Value *> &Params) {
       }
     }
   }
-  dbgs() << "\n\n";
+  // dbgs() << "\n\n";
   return ret;
 }
 
@@ -500,7 +508,10 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
   llvm::Function::arg_iterator ait;
   for (ait = RK->arg_begin(), pit = Params.begin(); ait != RK->arg_end();
        ait++, pit++) {
-    ait->setName(getOrCreateValueName(DbgInfoBuilder, *pit));
+    auto name = getOrCreateValueName(DbgInfoBuilder, *pit);
+    DEBUG_WITH_TYPE("RK", dbgs()
+                              << "Name for " << *pit << ": " << name << "\n");
+    ait->setName(name);
     VMap[*pit] = dyn_cast<Value>(ait);
   }
 

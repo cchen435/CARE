@@ -88,8 +88,11 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    if (F.getName() != "chargei_init") continue;
+    // if (F.getName() != "_Z5statsiPdS_S_S_iPi") continue;
+    // if (F.getName() == "setup") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
+    // F.dump();
+    DbgInfoBuilder->getDbgInfo(F);
 
     LivenessAnalysis LA(F);
     std::set<Value *> AllParams;
@@ -136,7 +139,8 @@ bool CarePass::runOnModule(Module &M) {
     // Create DILocalVariable for referenced values if it doesnot have
     for (auto it = AllParams.begin(); it != AllParams.end(); it++) {
       Value *V = *it;
-      if (!DbgInfoBuilder->hasDbgInfoIntrinsic(V)) {
+      if (isa<GlobalValue>(V)) {
+      } else if (!DbgInfoBuilder->hasDbgInfoIntrinsic(V)) {
         std::string VName = getOrCreateValueName(DbgInfoBuilder, V);
         DbgInfoBuilder->createDIVariable(V, VName, DIFunc);
       }

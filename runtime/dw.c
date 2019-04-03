@@ -716,7 +716,8 @@ static care_status_t care_dw_get_locdesc(care_context_t *env, Dwarf_Die die,
     // interpret the lopc and hipc based on lle value
     if (lle == DW_LLE_offset_pair) {
       Dwarf_Addr base;
-      Dwarf_Die func = care_dw_get_subprogram_die(env->dwarf, env->pc);
+      // Dwarf_Die func = care_dw_get_subprogram_die(env->dwarf, env->pc);
+      Dwarf_Die func = care_dw_get_cu_die_v2(env->dwarf, env->pc);
       if (!func) {
         char buf[256];
         sprintf(buf, "Failed to find the subprogram DIE.");
@@ -1161,7 +1162,7 @@ void *care_dw_get_var_loc(care_context_t *env, char *varname) {
 
   fprintf(stderr, "2. retrive locdesc for variable %s: ", varname);
   retval = care_dw_get_locdesc(env, var_die, &locdesc_entry);
-  if (!retval) {
+  if (retval == CARE_FAILURE) {
     fprintf(stderr, "Failed.\n");
     return NULL;
   }

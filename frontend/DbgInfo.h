@@ -51,7 +51,6 @@ class CAREDIBuilder {
     static int col = 100;
     return ++col;
   };
-  void getDbgInfo(Module &M);
   void resolveConflictDbgInfo(Module &M);
 
  public:
@@ -62,6 +61,7 @@ class CAREDIBuilder {
     delete DBuilder;
   }
 
+  void getDbgInfo(Function &F);
   DISubprogram *createDIFunction(Function &F);
   DILocalVariable *createDIVariable(Value *V, std::string VName, DIScope *Scop);
   DebugLoc setDIDebugLoc(Instruction *Insn, DIScope *Scop);
