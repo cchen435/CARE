@@ -219,9 +219,11 @@ int RKBuilder::getParams(std::set<Value *> &Params) {
   Workspace.clear();
   Value *Addr = getPointerOperand(MemAccInst);
   Workspace.insert(Workspace.begin(), Addr);
+  dbgs() << "getParams for : " << *MemAccInst;
   while (Workspace.size()) {
     Value *V = Workspace.back();
     Workspace.pop_back();
+    dbgs() << "\n\tChecking : " << *V;
 
     if (isExpandable(V) ||
         isa<GetElementPtrInst>(V)) {  // Expandable Value is also an Instruction
@@ -250,6 +252,7 @@ int RKBuilder::getParams(std::set<Value *> &Params) {
       }
     }
   }
+  dbgs() << "\n\n";
   return ret;
 }
 
