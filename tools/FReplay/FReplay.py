@@ -31,7 +31,7 @@ def parse_arguments(args, opts):
 
     faults = opts['file']
     assert(faults), "We expect a json file from pure injection experiments.\n"
-    faults = Path(faults).absolute()
+    faults = str(Path(faults).absolute())
 
     num_workers = opts['num_workers']
 
