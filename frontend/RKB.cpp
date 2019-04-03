@@ -75,6 +75,8 @@ RKBuilder::RKBuilder(Instruction *MemAccInst, LivenessAnalysis &LA,
     : MemAccInst(MemAccInst), LA(LA), DbgInfoBuilder(DIB), CareM(M) {
   DEBUG_WITH_TYPE("RKB", dbgs() << "Retriving calculations for Instruction: "
                                 << *MemAccInst << "\n");
+  Params.clear();
+  Stmts.clear();
   RK = nullptr;
   build();
 }
@@ -214,6 +216,7 @@ std::vector<Value *> RKBuilder::getOperands(Instruction *Insn) {
 int RKBuilder::getParams(std::set<Value *> &Params) {
   int ret = 0;
   std::vector<Value *> Workspace;
+  Workspace.clear();
   Value *Addr = getPointerOperand(MemAccInst);
   Workspace.insert(Workspace.begin(), Addr);
   while (Workspace.size()) {

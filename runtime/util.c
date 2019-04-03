@@ -358,12 +358,6 @@ care_status_t care_util_find_routine(care_context_t *context,
   context->log.key = strdup(buf);
   care_util_hash(buf, key);
 
-#ifdef DEBUG_RK
-  fprintf(stderr, "Key: ");
-  for (unsigned i = 0; i < 32; i++) fprintf(stderr, "%c", key[i]);
-  fprintf(stderr, "\n");
-#endif
-
   // clean the storage used by src
   // care_dw_dealloc_str(context->dwarf, src);
 

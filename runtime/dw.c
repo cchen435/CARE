@@ -1147,20 +1147,25 @@ void *care_dw_get_var_loc(care_context_t *env, char *varname) {
   Dwarf_Die var_die;
   Dwarf_Locdesc_c locdesc_entry;
 
+  fprintf(stderr, "Search location for variable %s\n", varname);
+
   // get the die of the variable
+  fprintf(stderr, "1. Search DIE for variable %s: ", varname);
   var_die = care_dw_get_var_die(env->dwarf, env->pc, varname);
   if (!var_die) {
-    char buf[256];
-    sprintf(buf, "No Die found for the variable: %s", varname);
-    care_err_set_external_msg(buf);
-    care_err_set_code(CARE_NO_LOC);
+    fprintf(stderr, "Failed.\n");
     return NULL;
   }
-#ifdef DEBUG
-  fprintf(stderr, "The Die for %s: \n", varname);
+  fprintf(stderr, "Success.\n");
   care_dw_print_die(env->dwarf, var_die, 0);
-#endif
+
+  fprintf(stderr, "2. retrive locdesc for variable %s: ", varname);
   retval = care_dw_get_locdesc(env, var_die, &locdesc_entry);
-  if (retval == CARE_SUCCESS) return care_dw_eval_locdesc(env, locdesc_entry);
-  return NULL;
+  if (!retval) {
+    fprintf(stderr, "Failed.\n");
+    return NULL;
+  }
+  fprintf(stderr, "Success.\n");
+  fprintf(stderr, "3. evaluate locdesc for variable %s: ", varname);
+  return care_dw_eval_locdesc(env, locdesc_entry);
 }

@@ -88,9 +88,7 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    // if (F.getName() !=
-    //    "_ZN6miniFE6driverIdiiEEiRK3BoxRS1_RNS_10ParametersER8YAML_Doc")
-    //  continue;
+    if (F.getName() != "chargei_init") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
 
     LivenessAnalysis LA(F);
