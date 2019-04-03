@@ -79,9 +79,8 @@ class FRExpr(object):
         # Execution log
         self._expr_logger = logging.getLogger('FRExpr')
         self._expr_logger.setLevel(getattr(logging, log_level.upper(), None))
-
-        fh = logging.FileHandler(
-            self._expr_path.joinpath(self._expr_path.name+'.log'))
+        logfile = str(self._expr_path.joinpath(self._expr_path.name+'.log'))
+        fh = logging.FileHandler(logfile)
         ch = logging.StreamHandler()
         formatter = logging.Formatter('%(asctime)s-%(levelname)s:%(message)s')
         fh.setFormatter(formatter)
@@ -92,8 +91,8 @@ class FRExpr(object):
         self._expr_logger.info("FRExpr for: \n\t\tEXP: %s \n\t\tExec: %s %s" % (
             self._expr_path, self._expr_exec, ' '.join(exec_args)))
 
-        self._expr_injection_log = open(self._expr_path.joinpath(
-            self._expr_path.name+'_replay.json'), 'a+')
+        logfile = str(self._expr_path.joinpath( self._expr_path.name+'_replay.json'))
+        self._expr_injection_log = open(logfile, 'a+')
 
     def __setup_runtime_loggers(self):
         num_workers = self._num_workers
@@ -103,7 +102,7 @@ class FRExpr(object):
             logs[i] = logging.getLogger('FR-Worker%d' % i)
             logs[i].setLevel(getattr(logging, 'info'.upper(), None))
             fh = logging.FileHandler(
-                self._expr_path.joinpath('Worker-%d.log' % i))
+                str(self._expr_path.joinpath('Worker-%d.log' % i)))
             fh.setFormatter(formatter)
             logs[i].addHandler(fh)
         return logs
@@ -138,7 +137,7 @@ class FRExpr(object):
         eargs = self._exec_args
         nworkers = self._num_workers
         queues = [mp.Queue() for i in range(nworkers)]
-        tmps = [open(epath.joinpath("tmp-worker-%d.json" % i), 'a+')
+        tmps = [open(str(epath.joinpath("tmp-worker-%d.json" % i)), 'a+')
                 for i in range(nworkers)]
 
         self._expr_logger.info("Start Replay Experiment %s." % epath.name)
