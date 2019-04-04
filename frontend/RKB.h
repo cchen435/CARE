@@ -61,7 +61,8 @@ class RKBuilder {
   int getParams(std::set<Value *> &Params);
   void getStmts(std::set<Value *> Params, std::vector<Value *> &Stmts);
   FunctionType *getFunctionType(std::set<Value *> Params);
-  Value *createConstantExpr(IRBuilder<NoFolder> &IRB, ConstantExpr *Expr);
+  Value *createConstantExpr(IRBuilder<NoFolder> &IRB, ConstantExpr *Expr,
+                            std::map<Value *, Value *> VMap);
   Value *createInstruction(IRBuilder<NoFolder> &IRB, Instruction *Insn,
                            std::vector<Value *> Operands);
   Function *createRecoveryKernel(std::set<Value *> Params,

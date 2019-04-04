@@ -52,10 +52,14 @@ std::string getOrCreateValueName(CAREDIBuilder *DIB, Value *V) {
   if (auto GV = dyn_cast<GlobalVariable>(V)) {
     SmallVector<DIGlobalVariableExpression *, 8> GVE;
     GV->getDebugInfo(GVE);
-    if (GVE.size() > 1)
-      dbgs() << "GlobalVariable have more then 1 DbgInfo: " << *V << "\n";
-    auto DIGV = GVE[0]->getVariable();
-    name = DIGV->getDisplayName();
+    if (GVE.size() == 0)
+      name = GV->getName();
+    else {
+      if (GVE.size() > 1)
+        dbgs() << "GlobalVariable have more then 1 DbgInfo: " << *V << "\n";
+      auto DIGV = GVE[0]->getVariable();
+      name = DIGV->getDisplayName();
+    }
   } else if (auto DbgInst = DIB->getDbgInfoIntrinsic(V)) {
     DILocalVariable *Var;
     if (isa<DbgValueInst>(DbgInst))
@@ -311,18 +315,25 @@ FunctionType *RKBuilder::getFunctionType(std::set<Value *> Params) {
 }
 
 Value *RKBuilder::createConstantExpr(IRBuilder<NoFolder> &IRB,
-                                     ConstantExpr *Expr) {
+                                     ConstantExpr *Expr,
+                                     std::map<Value *, Value *> VMap) {
   std::vector<Value *> Operands;
   Value *ret;
   for (unsigned i = 0; i < Expr->getNumOperands(); i++) {
     Value *op = Expr->getOperand(i);
     if (auto SExpr = dyn_cast<ConstantExpr>(op))
-      op = createConstantExpr(IRB, SExpr);
+      op = createConstantExpr(IRB, SExpr, VMap);
     else if (isStdlibVariable(op))
       op = CareM->getOrInsertGlobal(op->getName(), op->getType());
-    else {
-      dbgs() << "createConstantExpr meet unprocessed operands in Expr: " << *op
-             << "\n";
+    else if (isa<GlobalVariable>(op)) {
+      if (VMap.find(op) == VMap.end()) {
+        dbgs() << "Failed to find value for global variable: " << *op << "\n";
+        llvm_unreachable("Error");
+      }
+      op = VMap[op];
+    } else if (!isa<ConstantData>(op)) {
+      dbgs() << "createConstantExpr meet unprocessed operand (" << *op
+             << ") in Expr: " << *Expr << "\n";
       llvm_unreachable("Unsupported\n");
     }
     Operands.push_back(op);
@@ -332,9 +343,15 @@ Value *RKBuilder::createConstantExpr(IRBuilder<NoFolder> &IRB,
       ret = IRB.CreateBitCast(Operands[0],
                               dyn_cast<BitCastOperator>(Expr)->getDestTy());
       break;
+    case Instruction::GetElementPtr:
+      ret = IRB.CreateGEP(
+          Operands[0],
+          std::vector<Value *>(Operands.begin() + 1, Operands.end()),
+          Expr->getName());
+      break;
     default:
       dbgs() << "createConstantExpr meet an upsupported Opcode: " << *Expr
-             << "\n";
+             << "(isaGlobalVariable: " << isa<GlobalVariable>(Expr) << ")\n";
       llvm_unreachable("Unsupported Opcode");
       break;
   }
@@ -509,8 +526,6 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
   for (ait = RK->arg_begin(), pit = Params.begin(); ait != RK->arg_end();
        ait++, pit++) {
     auto name = getOrCreateValueName(DbgInfoBuilder, *pit);
-    DEBUG_WITH_TYPE("RK", dbgs()
-                              << "Name for " << *pit << ": " << name << "\n");
     ait->setName(name);
     VMap[*pit] = dyn_cast<Value>(ait);
   }
@@ -540,11 +555,11 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
     if (auto CI = dyn_cast<CallInst>(Insn)) {
       for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
         Value *Op = CI->getArgOperand(i);
-        if (auto CExpr = dyn_cast<ConstantExpr>(Op)) {
-          Operands.push_back(createConstantExpr(IRB, CExpr));
-        } else if (isStdlibVariable(Op)) {
+        if (isStdlibVariable(Op)) {
           auto GV = CareM->getOrInsertGlobal(Op->getName(), Op->getType());
           Operands.push_back(GV);
+        } else if (auto CExpr = dyn_cast<ConstantExpr>(Op)) {
+          Operands.push_back(createConstantExpr(IRB, CExpr, VMap));
         } else if (isa<ConstantData>(Op) || isa<ConstantAggregate>(Op)) {
           Operands.push_back(Op);
         } else if (VMap.find(Op) != VMap.end()) {
@@ -558,11 +573,11 @@ Function *RKBuilder::createRecoveryKernel(std::set<Value *> Params,
     } else
       for (unsigned i = 0; i < Insn->getNumOperands(); i++) {
         Value *Op = Insn->getOperand(i);
-        if (auto CExpr = dyn_cast<ConstantExpr>(Op)) {
-          Operands.push_back(createConstantExpr(IRB, CExpr));
-        } else if (isStdlibVariable(Op)) {
+        if (isStdlibVariable(Op)) {
           auto GV = CareM->getOrInsertGlobal(Op->getName(), Op->getType());
           Operands.push_back(GV);
+        } else if (auto CExpr = dyn_cast<ConstantExpr>(Op)) {
+          Operands.push_back(createConstantExpr(IRB, CExpr, VMap));
         } else if (isa<ConstantData>(Op) || isa<ConstantAggregate>(Op)) {
           Operands.push_back(Op);
         } else if (VMap.find(Op) != VMap.end()) {
