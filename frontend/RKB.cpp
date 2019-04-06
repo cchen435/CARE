@@ -366,6 +366,8 @@ Value *RKBuilder::createInstruction(IRBuilder<NoFolder> &IRB, Instruction *Insn,
     case Instruction::AShr:
       Inst = IRB.CreateAShr(Operands[0], Operands[1]);
       break;
+    case Instruction::LShr:
+      Inst = IRB.CreateLShr(Operands[0], Operands[1]);
     case Instruction::Add:
       Inst = IRB.CreateAdd(Operands[0], Operands[1]);
       break;
