@@ -41,7 +41,8 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
     fprintf(stderr, "CARE: recover through unwind.\n");
     care_util_unwind(1);
   } else if (method == M_REDO) {  // recover with recomputation
-    // retrive recovery routine
+                                  // retrive recovery routine
+
     fprintf(stderr, "CARE: Recover through recovery kernels.\n\n");
     fprintf(stderr, "CARE: Search for recovery kernels.\n");
     status = care_util_find_routine(&ctx, &routine);
@@ -51,12 +52,14 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
       goto fexit;
     }
 
+#if DEBUG
     fprintf(stderr, "\tRecovery Routine -- \tFunction: %s, \tParams: ",
             care_tb_get_function_name_c(routine.funcTy));
     for (unsigned i = 0; i < routine.n_params; i++) {
       fprintf(stderr, "%s ", routine.params[i]);
     }
     fprintf(stderr, "\n\n");
+#endif
 
     // execute the recovery routine
     fprintf(stderr, "CARE: Execute the recovery kernel.\n");

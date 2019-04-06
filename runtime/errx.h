@@ -17,6 +17,8 @@ typedef enum _error {
   CARE_NO_LOC,      // failed to find the location for a variable
   CARE_INV_INST,    // invalid/unsupported instruction
   CARE_REPEATED,    // repeated recovery on the same instruction
+  CARE_OUT_SCOPE,   // repeated recovery on the same instruction
+
 } care_error_t;
 
 extern void care_err_set_code(care_error_t err);

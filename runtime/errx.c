@@ -19,7 +19,9 @@ static char* errmsg[] = {
     "Failed to get the debug info for key.",
     "Failed to find the locdesc for a variable.",
     "Failed to recover (repeating on the same instruction)",
-    "Unsupported Instruction."};
+    "Unsupported Instruction.",
+    "Out of Scope, got same addr",
+};
 
 void care_err_set_code(care_error_t err) {
   if (care_error_code == 0) care_error_code = err;

@@ -928,10 +928,12 @@ care_dwarf_t care_dw_open(const char *file_name) {
  * care_dw_close: close the file
  */
 void care_dw_close(care_dwarf_t dwarf) {
-  Dwarf_Error error;
-  dwarf_finish(dwarf->dwarf_handle, &error);
-  close(dwarf->fd);
-  free(dwarf);
+  if (dwarf) {
+    Dwarf_Error error;
+    dwarf_finish(dwarf->dwarf_handle, &error);
+    close(dwarf->fd);
+    free(dwarf);
+  }
 }
 
 //------------------ local function definition --------------------

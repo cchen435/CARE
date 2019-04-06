@@ -94,7 +94,9 @@ RKBuilder::RKBuilder(Instruction *MemAccInst, LivenessAnalysis &LA,
 }
 
 bool RKBuilder::isLive(Value *V) {
-  if (isa<Argument>(V) || isa<Constant>(V) || isa<AllocaInst>(V)) return true;
+  // if (isa<Argument>(V) || isa<Constant>(V) || isa<AllocaInst>(V)) return
+  // true;
+  if (isa<Constant>(V) || isa<AllocaInst>(V)) return true;
   if (auto Load = dyn_cast<LoadInst>(V)) {
     auto Addr = getPointerOperand(Load);
     if (isa<Argument>(Addr) || isa<GlobalVariable>(Addr) ||

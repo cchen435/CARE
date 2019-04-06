@@ -43,8 +43,6 @@ static uint64_t gettime() {
   return tval.tv_sec * 1000000 + tval.tv_usec;
 }
 
-static uint64_t prev_pc = 0;
-
 // ------------------ local functions definition -------------------
 /**
  * care_util_is_in_library is to check wether the addr
@@ -210,12 +208,6 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   context->machine.gregs = &(mcontext->gregs);
   context->machine.stack = &(ucontext->uc_stack);
   context->pc = (mcontext->gregs)[CARE_REG_IP];
-
-  if (context->pc == prev_pc) {
-    care_err_set_code(CARE_REPEATED);
-    return CARE_FAILURE;
-  }
-  prev_pc = context->pc;
 
   // initialize dwarf library
   context->dwarf = care_dw_open(program_invocation_name);
@@ -525,7 +517,8 @@ care_status_t care_util_update(care_context_t *env, care_target_t *target,
       // e.g., movl offset(%ebx, %esi, 4), %eax
       // we assume the base register (%ebx) is correct and
       // need to update index register (%esi)
-      ud_reg = target->base;
+      // ud_reg = target->base;
+      ud_reg = target->index;
       libc_reg = care_ud_translate(ud_reg);
       if (care_ud_is_gpr(ud_reg))
         base = (int64_t)(*env->machine.gregs)[libc_reg];
@@ -537,13 +530,15 @@ care_status_t care_util_update(care_context_t *env, care_target_t *target,
         return EXIT_FAILURE;
       }
 
-      // update the value need to be updated to index register
-      val -= base;
+      // update the value need to be updated to base register
       // checking scalar
-      if (target->scale) val /= target->scale;
+      if (target->scale)
+        val -= target->scale * base;
+      else
+        val -= base;
 
       // get the address of index register
-      ud_reg = target->index;
+      ud_reg = target->base;
       libc_reg = care_ud_translate(ud_reg);
 
     } else if (target->base != UD_NONE) {
@@ -571,8 +566,14 @@ care_status_t care_util_update(care_context_t *env, care_target_t *target,
     return CARE_FAILURE;
   }
 
+  if (val == (*env->machine.gregs)[libc_reg]) {
+    care_err_set_code(CARE_OUT_SCOPE);
+    return CARE_FAILURE;
+  }
+
   // update the register with the value
   ptr = (uint8_t *)&(*env->machine.gregs)[libc_reg];
+
   // adjust register alignment, e.g. AH, BH, CH, DH
   reg_width = care_ud_get_reg_width(ud_reg) / 8;
   if (care_ud_is_high(ud_reg)) ptr += reg_width;
