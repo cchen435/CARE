@@ -22,6 +22,7 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
   fprintf(stderr, "CARE: initialize the runtime\n");
   status = care_util_init(&ctx, info, context);
   if (status != CARE_SUCCESS) {
+    ctx.log.status = CARE_FAILURE;
     goto fexit;
   }
 

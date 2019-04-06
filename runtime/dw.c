@@ -15,6 +15,7 @@
 #include "util.h"
 
 Dwarf_Die care_dw_get_subprogram_die(care_dwarf_t dwarf, Dwarf_Addr PC);
+Dwarf_Die care_dw_get_cu_die_v2(care_dwarf_t dwarf, Dwarf_Addr PC);
 
 // ---------------- declaration of helper functions ---------------- //
 /**
@@ -168,15 +169,15 @@ static bool care_dw_contains_pc(care_dwarf_t dwarf, Dwarf_Die scope,
     Dwarf_Unsigned bytes, offset;
 
     if (tag == DW_TAG_lexical_block) {
-      Dwarf_Die subprogram;
-      subprogram = care_dw_get_subprogram_die(dwarf, PC);
-      if (!subprogram) {
+      Dwarf_Die cu;
+      cu = care_dw_get_cu_die_v2(dwarf, PC);
+      if (!cu) {
         char buf[256];
         sprintf(buf, "Failed to get subprograme DIE in care_dw_contains_pc.");
         care_err_set_external_msg(buf);
         return false;
       }
-      dwarf_lowpc(subprogram, &base, &error);
+      dwarf_lowpc(cu, &base, &error);
     } else
       dwarf_lowpc(scope, &base, &error);
 
@@ -492,7 +493,7 @@ static Dwarf_Die care_dw_get_cu_die(care_dwarf_t dwarf, Dwarf_Addr PC) {
  *                             which contains the instruction pointed
  *                             by PC. It is based dwarf_get_globals interface
  */
-static Dwarf_Die care_dw_get_cu_die_v2(care_dwarf_t dwarf, Dwarf_Addr PC) {
+Dwarf_Die care_dw_get_cu_die_v2(care_dwarf_t dwarf, Dwarf_Addr PC) {
   Dwarf_Global *globals;
   Dwarf_Error error;
   Dwarf_Signed gcnt = -1;
