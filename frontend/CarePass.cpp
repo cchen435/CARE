@@ -88,7 +88,7 @@ bool CarePass::runOnModule(Module &M) {
 
     if (F.isDeclaration() || F.isIntrinsic()) continue;
 
-    // if (F.getName() != "_Z18read_lammps_headerR4Atom") continue;
+    // if (F.getName() != "smooth") continue;
     // if (F.getName() == "setup") continue;
     dbgs() << "Working on Function: " << F.getName() << "!\n";
     // F.dump();
