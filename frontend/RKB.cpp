@@ -484,6 +484,9 @@ Value *RKBuilder::createInstruction(IRBuilder<NoFolder> &IRB, Instruction *Insn,
       Inst = IRB.CreateIntToPtr(Operands[0],
                                 dyn_cast<IntToPtrInst>(Insn)->getDestTy());
       break;
+    case Instruction::ShuffleVector:
+      Inst = IRB.CreateShuffleVector(Operands[0], Operands[1], Operands[2]);
+      break;
     default:
       dbgs() << "Unsupported Instruction: " << *Insn << "\n";
       for (unsigned i = 0; i < Operands.size(); i++) {
