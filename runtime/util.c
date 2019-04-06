@@ -43,8 +43,6 @@ static uint64_t gettime() {
   return tval.tv_sec * 1000000 + tval.tv_usec;
 }
 
-static uint64_t prev_pc = 0;
-
 // ------------------ local functions definition -------------------
 /**
  * care_util_is_in_library is to check wether the addr
@@ -210,12 +208,6 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   context->machine.gregs = &(mcontext->gregs);
   context->machine.stack = &(ucontext->uc_stack);
   context->pc = (mcontext->gregs)[CARE_REG_IP];
-
-  if (context->pc == prev_pc) {
-    care_err_set_code(CARE_REPEATED);
-    return CARE_FAILURE;
-  }
-  prev_pc = context->pc;
 
   // initialize dwarf library
   context->dwarf = care_dw_open(program_invocation_name);
@@ -569,6 +561,11 @@ care_status_t care_util_update(care_context_t *env, care_target_t *target,
     sprintf(buf, "operand type is neigther REG nor MEM: %s\n", env->insn);
     care_err_set_code(CARE_INV_INST);
     return CARE_FAILURE;
+  }
+
+  if (val == (*env->machine.gregs)[libc_reg]) {
+      care_err_set_code(CARE_OUT_SCOPE);
+      return CARE_FAILURE;
   }
 
   // update the register with the value
