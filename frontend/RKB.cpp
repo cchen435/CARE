@@ -95,6 +95,12 @@ RKBuilder::RKBuilder(Instruction *MemAccInst, LivenessAnalysis &LA,
 
 bool RKBuilder::isLive(Value *V) {
   if (isa<Argument>(V) || isa<Constant>(V) || isa<AllocaInst>(V)) return true;
+  if (auto Load = dyn_cast<LoadInst>(V)) {
+    auto Addr = getPointerOperand(Load);
+    if (isa<Argument>(Addr) || isa<GlobalVariable>(Addr) ||
+        isa<AllocaInst>(Addr))
+      return true;
+  }
   return LA.isLiveAt(V, MemAccInst);
 }
 
@@ -368,6 +374,7 @@ Value *RKBuilder::createInstruction(IRBuilder<NoFolder> &IRB, Instruction *Insn,
       break;
     case Instruction::LShr:
       Inst = IRB.CreateLShr(Operands[0], Operands[1]);
+      break;
     case Instruction::Add:
       Inst = IRB.CreateAdd(Operands[0], Operands[1]);
       break;
