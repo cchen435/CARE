@@ -43,37 +43,8 @@ void care_segv_handler(int signo, siginfo_t *info, void *context) {
   } else if (method == M_REDO) {  // recover with recomputation
                                   // retrive recovery routine
 
-    fprintf(stderr, "CARE: Recover through recovery kernels.\n\n");
-    fprintf(stderr, "CARE: Search for recovery kernels.\n");
-    status = care_util_find_routine(&ctx, &routine);
-    if (status != CARE_SUCCESS) {
-      fprintf(stderr, "\tRecovery Routine: Not Found\n");
-      ctx.log.status = CARE_FAILURE;
-      goto fexit;
-    }
-
-#if DEBUG
-    fprintf(stderr, "\tRecovery Routine -- \tFunction: %s, \tParams: ",
-            care_tb_get_function_name_c(routine.funcTy));
-    for (unsigned i = 0; i < routine.n_params; i++) {
-      fprintf(stderr, "%s ", routine.params[i]);
-    }
-    fprintf(stderr, "\n\n");
-#endif
-
-    // execute the recovery routine
-    fprintf(stderr, "CARE: Execute the recovery kernel.\n");
-    status = care_util_exec_routine(&ctx, routine, &rvalue);
-    if (status != CARE_SUCCESS) {
-      fprintf(stderr, "\tExecute the recovery kernel failed.\n\n");
-      ctx.log.status = CARE_FAILURE;
-      goto fexit;
-    }
-    ctx.log.memaddr = rvalue;
-
-    // update the target
-    fprintf(stderr, "CARE: Update the target operand.\n");
-    status = care_util_update(&ctx, &target, rvalue);
+    fprintf(stderr, "CARE: Update the target operand with letgo.\n");
+    status = care_util_update_heuristic(&ctx, &target);
     if (status != CARE_SUCCESS) {
       fprintf(stderr, "\tUpdate the target operand failed.\n");
       ctx.log.status = CARE_FAILURE;

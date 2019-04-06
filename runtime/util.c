@@ -36,6 +36,7 @@
 #endif
 
 static uint64_t start, end;
+static uint64_t prev_pc;
 
 static uint64_t gettime() {
   struct timeval tval;
@@ -208,6 +209,12 @@ care_status_t care_util_init(care_context_t *context, siginfo_t *sig_info,
   context->machine.gregs = &(mcontext->gregs);
   context->machine.stack = &(ucontext->uc_stack);
   context->pc = (mcontext->gregs)[CARE_REG_IP];
+
+  if (context->pc == prev_pc) {
+    care_err_set_code(CARE_OUT_SCOPE);
+    return CARE_FAILURE;
+  }
+  prev_pc = context->pc;
 
   // initialize dwarf library
   context->dwarf = care_dw_open(program_invocation_name);
@@ -564,8 +571,8 @@ care_status_t care_util_update(care_context_t *env, care_target_t *target,
   }
 
   if (val == (*env->machine.gregs)[libc_reg]) {
-      care_err_set_code(CARE_OUT_SCOPE);
-      return CARE_FAILURE;
+    care_err_set_code(CARE_OUT_SCOPE);
+    return CARE_FAILURE;
   }
 
   // update the register with the value
@@ -574,5 +581,66 @@ care_status_t care_util_update(care_context_t *env, care_target_t *target,
   reg_width = care_ud_get_reg_width(ud_reg) / 8;
   if (care_ud_is_high(ud_reg)) ptr += reg_width;
   memcpy(ptr, &val, reg_width);
+  return CARE_SUCCESS;
+}
+
+/**
+ * care_util_update: a general inteface to update and operand
+ */
+care_status_t care_util_update_heuristic(care_context_t *env,
+                                         care_target_t *target) {
+  ud_type_t ud_reg;
+  int libc_reg, reg_width;
+  int64_t offset = 0, base = 0;
+  uint8_t scale = 0;
+
+  uint8_t *ptr;
+
+  if (target->type == UD_OP_REG) {
+    ud_reg = target->base;
+    if (!care_ud_is_gpr(ud_reg)) {
+      char buf[256];
+      sprintf(buf, "Non-GPR Instruction is not handled: %s.", env->insn);
+      care_err_set_external_msg(buf);
+      care_err_set_code(CARE_INV_INST);
+      return CARE_FAILURE;
+    }
+  } else if (target->type == UD_OP_MEM) {
+    // retriving register
+    if (target->index != UD_NONE)
+      ud_reg = target->index;
+    else if (target->base != UD_NONE)
+      ud_reg = target->base;
+    else {
+      char buf[256];
+      sprintf(buf, "Non REG involved in the MEM operand: %s\n", env->insn);
+      care_err_set_external_msg(buf);
+      care_err_set_code(CARE_INV_INST);
+      return CARE_FAILURE;
+    }
+    libc_reg = care_ud_translate(ud_reg);
+
+    if (care_ud_is_gpr(ud_reg))
+      base = (int64_t)(*env->machine.gregs)[libc_reg];
+    else {
+      char buf[256];
+      sprintf(buf, "Non-GPR Instruction is not handled: %s.", env->insn);
+      care_err_set_external_msg(buf);
+      care_err_set_code(CARE_INV_INST);
+      return EXIT_FAILURE;
+    }
+  } else {
+    char buf[256];
+    sprintf(buf, "operand type is neigther REG nor MEM: %s\n", env->insn);
+    care_err_set_code(CARE_INV_INST);
+    return CARE_FAILURE;
+  }
+
+  // update the register with the value
+  ptr = (uint8_t *)&(*env->machine.gregs)[libc_reg];
+  // adjust register alignment, e.g. AH, BH, CH, DH
+  reg_width = care_ud_get_reg_width(ud_reg) / 8;
+  if (care_ud_is_high(ud_reg)) ptr += reg_width;
+  memset(ptr, 0, reg_width);
   return CARE_SUCCESS;
 }

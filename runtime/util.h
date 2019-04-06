@@ -75,4 +75,7 @@ care_status_t care_util_exec_routine(care_context_t *env,
 care_status_t care_util_update(care_context_t *env, care_target_t *target,
                                uint64_t value);
 
+care_status_t care_util_update_heuristic(care_context_t *env,
+                                         care_target_t *target);
+
 #endif
