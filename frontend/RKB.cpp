@@ -151,38 +151,22 @@ bool RKBuilder::isTerminalValue(Value *V) {
 }
 
 bool RKBuilder::isExpandable(Value *V) {
-  if (Expandable.find(V) != Expandable.end()) return Expandable[V];
-
-  Expandable[V] = true;
-  if (isTerminalValue(V)) {
-    Expandable[V] = false;
-  } else if (auto Insn = dyn_cast<Instruction>(V)) {
-    if (isa<CallInst>(V) && !isCallingSimpleKernel(dyn_cast<CallInst>(V))) {
-      Expandable[V] = false;
-    } else {
-      auto oprs = getOperands(Insn);
-      for (auto i = 0; i < oprs.size(); i++) {
-        Value *op = oprs[i];
-
-        if (isa<Constant>(op))
-          continue;
-        else if (!isLive(op) && !isExpandable(op)) {
-          Expandable[V] = false;
-          break;
-        }
-      }
-    }
+  if (isTerminalValue(V))
+    return false;
+  else if (auto Insn = dyn_cast<Instruction>(V)) {
+    if (isa<CallInst>(V) && !isCallingSimpleKernel(dyn_cast<CallInst>(V)))
+      return false;
+    return true;
   } else {
     dbgs() << "isExpandable on non terminal and inst value: " << V << "\n";
-    Expandable[V] = false;
+    return false;
   }
-  return Expandable[V];
 }
 
 bool RKBuilder::isMemAlloc(Function *F) {
   auto name = F->getName();
   if (name == "_Znwm" || name == "malloc" || name == "_mm_malloc" ||
-      name == "alloc")
+      name == "alloc" || name == "ma_malloc")
     return true;
   return false;
 }

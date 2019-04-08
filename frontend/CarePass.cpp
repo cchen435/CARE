@@ -94,7 +94,7 @@ bool CarePass::runOnModule(Module &M) {
     // F.dump();
     DbgInfoBuilder->getDbgInfo(F);
 
-    LivenessAnalysis LA(F);
+    LivenessAnalysis LA(F, true);
     std::set<Value *> AllParams;
     DISubprogram *DIFunc = DbgInfoBuilder->getOrCreateDIFunction(F);
     for (inst_iterator i = inst_begin(F); i != inst_end(F); i++) {
