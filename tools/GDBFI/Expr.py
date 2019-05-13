@@ -57,7 +57,7 @@ class GDBFIExpr(object):
         self._expr_logger = logging.getLogger('GDBFIExpr')
         self._expr_logger.setLevel(getattr(logging, log_level.upper(), None))
         fh = logging.FileHandler(
-            self._expr_path.joinpath(self._expr_path.name+'.log'))
+            str(self._expr_path.joinpath(self._expr_path.name+'.log')))
         ch = logging.StreamHandler()
         formatter = logging.Formatter('%(asctime)s-%(levelname)s:%(message)s')
         fh.setFormatter(formatter)
@@ -68,8 +68,8 @@ class GDBFIExpr(object):
         self._expr_logger.info("GDBExpr for: \n\t\t\tEXP: %s \n\t\t\tExec: %s %s" % (
             self._expr_path, self._expr_exec, ' '.join(exec_args)))
 
-        self._expr_injection_log = open(self._expr_path.joinpath(
-            self._expr_path.name+'_faults.json'), 'a+')
+        self._expr_injection_log = open(str(self._expr_path.joinpath(
+            self._expr_path.name+'_faults.json')), 'a+')
 
         self.__framework = framework
 
@@ -81,7 +81,7 @@ class GDBFIExpr(object):
             logs[i] = logging.getLogger('GDBFIExpr-worker%d' % i)
             logs[i].setLevel(getattr(logging, 'info'.upper(), None))
             fh = logging.FileHandler(
-                self._expr_path.joinpath('worker-%d.log' % i))
+                str(self._expr_path.joinpath('worker-%d.log' % i)))
             fh.setFormatter(formatter)
             logs[i].addHandler(fh)
         return logs
@@ -127,13 +127,13 @@ class GDBFIExpr(object):
             shutil.rmtree(str(profile_path))
         profile_path.mkdir()
 
-        os.chdir(profile_path)
+        os.chdir(str(profile_path))
 
         framework.profile(self._expr_exec, self._exec_args)
 
         # this statment need to be put after above data
         # write statement because of current workspace issue
-        os.chdir(self._expr_path)
+        os.chdir(str(self._expr_path))
 
     def run(self):
         epath = self._expr_path
@@ -152,7 +152,7 @@ class GDBFIExpr(object):
         logs = self.__setup_runtime_loggers()
         # split the whole workloads among num_workers
         jobs = self.gen_workloads(method='RR')
-        tmps = [open(epath.joinpath("tmp-worker-%d.json" % i), 'a+')
+        tmps = [open(str(epath.joinpath("tmp-worker-%d.json" % i)), 'a+')
                 for i in range(num_workers)]
 
         workers = [FIWorker(i, epath, execf, eargs, jobs[i], self.__framework, self._fault_model, logs[i], queues[i])

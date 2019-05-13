@@ -96,7 +96,7 @@ class FIWorker(mp.Process):
                     '\t[%s]: directory exists, and data could be overwritten.' % name, logging.WARNING)
             else:
                 wd.mkdir()
-            os.chdir(wd)
+            os.chdir(str(wd))
 
             # start the application and sleep for while, then pause the app
             # retry if attach to process failed

@@ -78,7 +78,7 @@ class GDBFramework(Framework):
     def load_profile(self, profile_path):
         profile = profile_path.joinpath('timing.json')
         assert profile.exists(), "profile file %s not found" % profile.name
-        with open(profile) as fh:
+        with open(str(profile)) as fh:
             data = json.load(fh)
             self._p_time = data['exec_time']
 
