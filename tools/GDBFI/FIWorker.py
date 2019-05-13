@@ -123,7 +123,7 @@ class FIWorker(mp.Process):
             # self.log_msg('\t[%s]: put record into the queue: %s' % (name, str(record)))
             self.log_msg('\t[%s]: put record into the queue.' % (name))
             self._queue.put(record)
-            os.chdir(self._expr_path)
+            os.chdir(str(self._expr_path))
 
         # sync before exit
         self.log_msg('finished job and exit')
