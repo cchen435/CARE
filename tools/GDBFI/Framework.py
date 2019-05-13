@@ -21,8 +21,9 @@ import time
 
 
 class Framework(object):
-    def __init__(self):
+    def __init__(self, fmodel):
         self._p_time = 0
+        self._fmodel = fmodel
 
     def profile(self):
         raise NotImplementedError()
@@ -69,10 +70,10 @@ class Framework(object):
 
 
 class GDBFramework(Framework):
-    def __init__(self, logger, rounds=10):
+    def __init__(self, fmodel, logger, rounds=10):
         self._logger = logger
         self._rounds = rounds
-        super(GDBFramework, self).__init__()
+        super(GDBFramework, self).__init__(fmodel)
 
     def load_profile(self, profile_path):
         profile = profile_path.joinpath('timing.json')
@@ -157,7 +158,7 @@ class GDBFramework(Framework):
                     app.terminate()
                 continue
 
-            fault = GDBFIFault(stop_point, gdbsession, insn)
+            fault = GDBFIFault(stop_point, gdbsession, insn, self._fmodel)
 
             # advance to the next step to update the target
             status = gdbsession.exec_nexti()
@@ -179,7 +180,7 @@ class GDBFramework(Framework):
 
 class PINFramework(Framework):
     # pin -t / home/cchen/Documents/Projects/CARE/src/GDBFI/pintool/pintool.so - - ./bench_gtc_care A.txt 100 1
-    def __init__(self, logger):
+    def __init__(self, fmodel, logger):
         self._logger = logger
         self._insts = None
         self._distr = None
@@ -192,7 +193,7 @@ class PINFramework(Framework):
                              ).parent.joinpath('pintool/pintool.so')
         if not self._pintool.exists():
             sys.exit("pintool is not found in: %s" % self._pintool.absolute())
-        super(PINFramework, self).__init__()
+        super(PINFramework, self).__init__(fmodel)
 
     def load_profile(self, profile_path):
         profile = profile_path.joinpath('gdbfi.profile')
@@ -314,7 +315,7 @@ class PINFramework(Framework):
                     app.terminate()
                 continue
 
-            fault = GDBFIFault((addr, count), gdbsession, insn)
+            fault = GDBFIFault((addr, count), gdbsession, insn, self._fmodel)
 
             # advance to the next step to update the target
             status = gdbsession.exec_nexti()

@@ -26,7 +26,7 @@ class GDBFIExpr(object):
         :param runs (int)         : number of injections
         :param base (int)         : the beginning id of injections, used for separating experiments into several runs
         :param skip_profile (bool): whether to skip profiling run
-        :param fault_model (string): the fault model to be used, supporting 'stuck-at-0', 'stuck-at-1', 'bitflip'
+        :param fault_model (string): the fault model to be used, supporting 'stuck-at-0', 'stuck-at-1', 'bitflip' and 'dbitflip'
         :param log_level (string) : the log level
         """
 
@@ -116,9 +116,9 @@ class GDBFIExpr(object):
         :return: execution time in seconds
         """
         if self.__framework == 'gdb':
-            framework = GDBFramework(self._expr_logger)
+            framework = GDBFramework(self._fault_model, self._expr_logger)
         elif self.__framework == 'pintool':
-            framework = PINFramework(self._expr_logger)
+            framework = PINFramework(self._fault_model, self._expr_logger)
         self._expr_logger.info("Profile run for expr %s." %
                                self._expr_path.name)
         profile_path = self._expr_path.joinpath('profile')
@@ -155,7 +155,7 @@ class GDBFIExpr(object):
         tmps = [open(epath.joinpath("tmp-worker-%d.json" % i), 'a+')
                 for i in range(num_workers)]
 
-        workers = [FIWorker(i, epath, execf, eargs, jobs[i], self.__framework, 'bitflip', logs[i], queues[i])
+        workers = [FIWorker(i, epath, execf, eargs, jobs[i], self.__framework, self._fault_model, logs[i], queues[i])
                    for i in range(num_workers)]
 
         for i in range(num_workers):

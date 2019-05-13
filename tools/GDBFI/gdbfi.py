@@ -47,7 +47,7 @@ def parse_arguments(args, opts):
     fmodel = 'bitflip'
     if opts['model']:
         fmodel = opts['model']
-    if fmodel not in ['bitflip', 'stuck-at-0', 'stuck-at-1']:
+    if fmodel not in ['bitflip', 'dbitflip', 'stuck-at-0', 'stuck-at-1']:
         raise Exception('Fault model (%s) is not supported' % fmodel)
 
     num_workers = opts['num_workers']

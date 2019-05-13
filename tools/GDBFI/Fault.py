@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from random import randint
+from random import randint, sample
 
 
 class GDBFIFault(object):
@@ -35,7 +35,16 @@ class GDBFIFault(object):
         bit = randint(0, bit_length-1)
         mask = 1 << bit
         result = data ^ mask
-        return bit, result
+        return [bit], result
+
+    def dbitflip(self, data, bit_length):
+        bits = sample(range(0, bit_length-1), 2)
+        result = data
+        for bit in bits:
+            mask = 1 << bit
+            result = result ^ mask
+
+        return bits, result
 
     def inject(self):
         """ Perform the injection """
@@ -46,6 +55,8 @@ class GDBFIFault(object):
 
         if self._fmode == 'bitflip':
             self._bit, self._faulty = self.bitflip(self._normal, width)
+        elif self._fmode == 'dbitflip':
+            self._bit, self._faulty = self.dbitflip(self._normal, width)
         else:
             return "Error: fault mode (%s) not supported." % self._fmode
         # print("\tfault: ", self.get_fault_info())

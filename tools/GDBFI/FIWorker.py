@@ -40,9 +40,9 @@ class FIWorker(mp.Process):
         self._queue = queue
 
         if framework == 'gdb':
-            self._framework = GDBFramework(log)
+            self._framework = GDBFramework(fault_model, log)
         elif framework == 'pintool':
-            self._framework = PINFramework(log)
+            self._framework = PINFramework(fault_model, log)
 
         profile_path = expr_path.joinpath('profile')
         self._framework.load_profile(profile_path)
