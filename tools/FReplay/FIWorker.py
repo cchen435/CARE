@@ -84,7 +84,7 @@ class FIWorker(mp.Process):
                     '\t[%s]: directory exists, and data could be overwritten.' % fid, logging.WARNING)
             else:
                 wd.mkdir()
-            os.chdir(wd)
+            os.chdir(str(wd))
 
             gdbsession = GDBController(self._log, self._id, fid)
             app = Application(self._expr_exec, self._exec_args)
@@ -173,7 +173,7 @@ class FIWorker(mp.Process):
             # self.log_msg('\t[%s]: put record into the queue: %s' % (name, str(record)))
             self.log_msg('\t[%s]: put record into the queue.' % (fid))
             self._queue.put(record)
-            os.chdir(self._expr_path)
+            os.chdir(str(self._expr_path))
 
         # sync before exit
         self.log_msg('finished job and exit')

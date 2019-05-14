@@ -16,14 +16,14 @@ import sys
 import time
 
 
-def json_parser(ffile, IDs, filter='SIGSEGV'):
+def json_parser(ffile, IDs, filter=['SIGSEGV', '11']):
     result = list()
     with open(ffile) as fh:
         for line in fh.readlines():
             record = json.loads(line)
 
             status = record['status']
-            if status != filter:
+            if status not in filter:
                 continue
 
             id = record['id']
@@ -59,10 +59,8 @@ class FRExpr(object):
             self._expr_path.mkdir()
 
         self._expr_exec = Path(expr_exec).absolute()
-        assert(self._expr_exec.exists(),
-               "Executable (%s) not found" % self._expr_exec)
-        assert(self._expr_exec.is_file(),
-               "Executable (%s) is not a file" % self._expr_exec)
+        assert self._expr_exec.exists(), "Executable (%s) not found" % self._expr_exec
+        assert self._expr_exec.is_file(), "Executable (%s) is not a file" % self._expr_exec
         self._expr_exec = str(self._expr_exec)
 
         self._exec_args = exec_args
@@ -100,9 +98,9 @@ class FRExpr(object):
         formatter = logging.Formatter('%(asctime)s-%(levelname)s:%(message)s')
         for i in range(num_workers):
             logs[i] = logging.getLogger('FR-Worker%d' % i)
-            logs[i].setLevel(getattr(logging, 'info'.upper(), None)
-            name = str(self._expr_path.joinpath('Worker-%d.log' % i))
-            fh = logging.FileHandler(name)
+            logs[i].setLevel(getattr(logging, 'info'.upper(), None))
+            fname = str(self._expr_path.joinpath('Worker-%d.log' % i))
+            fh = logging.FileHandler(fname)
             fh.setFormatter(formatter)
             logs[i].addHandler(fh)
         return logs
