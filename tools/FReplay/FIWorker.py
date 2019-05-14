@@ -24,12 +24,8 @@ class FIWorker(mp.Process):
         :param expr_exec:
         :param exec_args:
         :param workloads: contains the injection id assigned to the worker
-        :param profile_time: total number of instructions based on profile run
         :param log: log handler
-        :param lock: lock for accessing log handler
         :param queue: used for communicate with parent process
-        :param barrier:
-        :param freq:
         """
         self._id = wid
         self._expr_path = expr_path
@@ -61,8 +57,7 @@ class FIWorker(mp.Process):
 
         care_runtime_lib = Path(os.environ['CARE_ROOT']).joinpath(
             'build/runtime/libCARERuntime.so').absolute()
-        assert(care_runtime_lib.exists()
-               ), "the recovery runtime library is not setup yet!"
+        assert care_runtime_lib.exists(), "the recovery runtime library is not setup yet!"
 
         os.environ["CARE_EXPR_PATH"] = str(self._expr_path)
 
@@ -149,8 +144,10 @@ class FIWorker(mp.Process):
 
             # inject the fault by bitflipping
             data = gdbsession.read_variable(var)
-            mask = 1 << fbit
-            fvalue = data ^ mask
+            fvalue = data
+            for bit in fbit:
+                mask = 1 << bit
+                fvalue = fvalue ^ mask
 
             print('Normal: ', data, '\tFaulty: ', fvalue)
 

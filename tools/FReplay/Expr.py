@@ -137,7 +137,7 @@ class FRExpr(object):
         eargs = self._exec_args
         nworkers = self._num_workers
         queues = [mp.Queue() for i in range(nworkers)]
-        tmps = [open(epath.joinpath("tmp-worker-%d.json" % i), 'a+')
+        tmps = [open(str(epath.joinpath("tmp-worker-%d.json" % i)), 'a+')
                 for i in range(nworkers)]
 
         self._expr_logger.info("Start Replay Experiment %s." % epath.name)
