@@ -8,3 +8,7 @@ test/frontend/*.dwarf
 test/frontend/*.so
 test/frontend/*.bc
 .vscode
+test/*
+tools/FReplay/__pycache__
+tools/jupyter/.ipynb_checkpoints
+tools/jupyter/*.json
