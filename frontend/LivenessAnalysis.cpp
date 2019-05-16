@@ -39,19 +39,22 @@ void LivenessAnalysis::doLivenessAnalysis(Function &F) {
     iter++;
     if (iter % 100 == 0) dbgs() << "Iteration: " << iter << "\n";
     updated = false;
-    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
-      Instruction *Insn = &*I;
+    auto &BBList = F.getBasicBlockList();
+    // for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
+    for (auto BB = BBList.rbegin(); BB != BBList.rend(); BB++) {
+      for (auto I = BB->rbegin(); I != BB->rend(); I++) {
+        Instruction *Insn = &*I;
 
-      // calc diff = out[n] - def[n]
-      auto diff = Out[Insn];
-      auto it = diff.find(Insn);
-      if (it != diff.end()) diff.erase(it);
+        // calc diff = out[n] - def[n]
+        auto diff = Out[Insn];
+        auto it = diff.find(Insn);
+        if (it != diff.end()) diff.erase(it);
 
-      // in[n] = use[n] U diff
-      auto cin = use[Insn];
-      cin.insert(diff.begin(), diff.end());
+        // in[n] = use[n] U diff
+        auto cin = use[Insn];
+        cin.insert(diff.begin(), diff.end());
 
-      if (cin != In[Insn]) {
+        if (cin != In[Insn]) {
 #if 0
         if (iter % 200 == 0) {
           dbgs() << "\n\nInstruction[In]: " << *Insn;
@@ -61,19 +64,19 @@ void LivenessAnalysis::doLivenessAnalysis(Function &F) {
           for (auto I : cin) dbgs() << "\n\t\t" << *I;
         }
 #endif
-        updated = true;
-      }
+          updated = true;
+        }
 
-      In[Insn] = cin;
+        In[Insn] = cin;
 
-      // out[n] = U {in[S] | s in succ[n]}
-      std::set<Value *> tmp;
-      for (auto I : getSuccessors(Insn)) {
-        if (!I) continue;
-        tmp.insert(In[I].begin(), In[I].end());
-      }
+        // out[n] = U {in[S] | s in succ[n]}
+        std::set<Value *> tmp;
+        for (auto I : getSuccessors(Insn)) {
+          if (!I) continue;
+          tmp.insert(In[I].begin(), In[I].end());
+        }
 
-      if (tmp != Out[Insn]) {
+        if (tmp != Out[Insn]) {
 #if 0
         if (iter % 200 == 0) {
           dbgs() << "\n\n\nInstruction[Out]: " << *Insn;
@@ -83,10 +86,11 @@ void LivenessAnalysis::doLivenessAnalysis(Function &F) {
           for (auto I : tmp) dbgs() << "\n\t\t" << *I;
         }
 #endif
-        updated = true;
-      }
+          updated = true;
+        }
 
-      Out[Insn] = tmp;
+        Out[Insn] = tmp;
+      }
     }
   } while (updated);
   dbgs() << "Total Iterations: " << iter << "\n";
